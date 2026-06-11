@@ -4,14 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>spine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div id="app">
     <aside class="sidebar">
-      <div class="brand"><span class="dot"></span> spine</div>
+      <div class="brand">
+        <span class="brand-mark">spine</span>
+        <span class="brand-sub">project memory</span>
+      </div>
       <nav id="nav"></nav>
-      <div class="foot">read-only · reflects <code>.spine/</code></div>
+      <div class="foot"><span class="led"></span> read-only · <code>.spine/</code></div>
     </aside>
     <main id="main"></main>
   </div>

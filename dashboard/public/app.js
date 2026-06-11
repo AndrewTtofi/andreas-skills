@@ -17,7 +17,7 @@ async function load() {
   try {
     spine = await fetch("/api/spine").then((r) => r.json());
   } catch {
-    main.innerHTML = `<div class="empty"><h1>Couldn't reach the server.</h1></div>`;
+    main.innerHTML = `<section class="empty"><h1>Couldn't reach the server.</h1></section>`;
     return;
   }
   renderNav();
@@ -26,8 +26,10 @@ async function load() {
 
 function renderNav() {
   nav.innerHTML = SECTIONS.map(
-    ([id, label]) =>
-      `<button class="nav-item${id === active ? " active" : ""}" data-id="${id}">${label}</button>`
+    ([id, label], i) =>
+      `<button class="nav-item${id === active ? " active" : ""}" data-id="${id}" style="--i:${i}">
+         <span class="vert"></span><span class="nav-label">${label}</span>
+       </button>`
   ).join("");
   nav.querySelectorAll(".nav-item").forEach((b) =>
     b.addEventListener("click", () => {
@@ -40,32 +42,37 @@ function renderNav() {
 
 function render() {
   if (!spine || !spine.exists) {
-    main.innerHTML = `<div class="empty">
-      <h1>No Spine here yet</h1>
-      <p>Run <code>init</code> in this repo to create a <code>.spine/</code> store, then reload.</p>
-    </div>`;
+    main.innerHTML = `<section class="empty">
+      <div class="kicker">no spine</div>
+      <h1>Nothing recorded here yet</h1>
+      <p>Run <code>init</code> to create a <code>.spine/</code> store, then refresh.</p>
+    </section>`;
     return;
   }
   if (active === "overview") return renderOverview();
   if (active === "decisions") return renderDecisions();
   const map = { architecture: spine.context, conventions: spine.conventions, journal: spine.journal };
-  main.innerHTML = `<div class="content"><div class="md">${map[active] ?? emptyNote(active)}</div></div>`;
+  main.innerHTML = `<section class="content">
+    <div class="kicker">${labelFor(active)}</div>
+    <article class="md">${map[active] ?? emptyNote(active)}</article>
+  </section>`;
 }
 
 function renderOverview() {
   main.innerHTML = `
-    <div class="content">
-      <div class="overview-grid">
-        <div class="stat"><div class="stat-label">Decisions</div><div class="stat-value">${spine.decisions.length}</div></div>
-        <div class="stat"><div class="stat-label">Sections</div><div class="stat-value">4</div></div>
+    <section class="content">
+      <div class="kicker">Overview</div>
+      <div class="readout">
+        <div class="tile"><div class="tile-num">${spine.decisions.length}</div><div class="tile-label">decisions</div></div>
+        <div class="tile"><div class="tile-num">4</div><div class="tile-label">memory files</div></div>
       </div>
-      <div class="md">${spine.journal ?? emptyNote("journal")}</div>
-    </div>`;
+      <article class="md">${spine.journal ?? emptyNote("journal")}</article>
+    </section>`;
 }
 
 function renderDecisions() {
   if (!spine.decisions.length) {
-    main.innerHTML = `<div class="content"><div class="md">${emptyNote("decisions")}</div></div>`;
+    main.innerHTML = `<section class="content"><div class="kicker">Decisions</div><article class="md">${emptyNote("decisions")}</article></section>`;
     return;
   }
   if (activeAdr >= spine.decisions.length) activeAdr = 0;
@@ -79,10 +86,13 @@ function renderDecisions() {
     )
     .join("");
   main.innerHTML = `
-    <div class="content decisions">
-      <div class="adr-list">${list}</div>
-      <div class="adr-detail md">${spine.decisions[activeAdr].html}</div>
-    </div>`;
+    <section class="content">
+      <div class="kicker">Decisions</div>
+      <div class="decisions">
+        <div class="adr-list">${list}</div>
+        <article class="adr-detail md">${spine.decisions[activeAdr].html}</article>
+      </div>
+    </section>`;
   main.querySelectorAll(".adr-item").forEach((b) =>
     b.addEventListener("click", () => {
       activeAdr = Number(b.dataset.i);
@@ -94,6 +104,9 @@ function renderDecisions() {
 function emptyNote(id) {
   const file = id === "architecture" ? "context.md" : `${id}.md`;
   return `<p class="muted">Nothing in <code>${file}</code> yet.</p>`;
+}
+function labelFor(id) {
+  return SECTIONS.find(([s]) => s === id)[1];
 }
 function stripNum(t) {
   return t.replace(/^\d+\.\s*/, "");
