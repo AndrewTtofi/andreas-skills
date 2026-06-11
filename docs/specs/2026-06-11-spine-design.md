@@ -1,4 +1,4 @@
-# andreas-skills — Design Spec
+# spine — Design Spec
 
 **Date:** 2026-06-11
 **Status:** Approved (design) → pending implementation plan
@@ -20,7 +20,7 @@ but disconnected. Three failure modes keep recurring with coding agents:
 3. **Loses context across sessions** — forgets decisions, re-explores, repeats
    mistakes.
 
-`andreas-skills` attacks all three with one structural idea: every skill reads
+`spine` attacks all three with one structural idea: every skill reads
 from and writes to a small, persistent per-project memory store. That store —
 the Spine — is the connective tissue that makes a *system* out of a *drawer*.
 
@@ -109,7 +109,7 @@ next session starts informed instead of cold.
 ## Repo structure
 
 ```
-andreas-skills/
+spine/
 ├── README.md            # vision · the Spine · install · skill reference
 ├── LICENSE              # MIT
 ├── CONTEXT.md           # shared language for repo contributors
@@ -126,7 +126,7 @@ andreas-skills/
 
 ### Distribution
 
-Installable via `npx skills add AndrewTtofi/andreas-skills` (skills.sh), an
+Installable via `npx skills add AndrewTtofi/spine` (skills.sh), an
 existing discovery channel. `plugin.json` lists every shipped skill.
 
 ## Scope

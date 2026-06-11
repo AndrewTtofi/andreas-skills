@@ -1,4 +1,4 @@
-# andreas-skills
+# spine
 
 A full-lifecycle engineering skill system for coding agents, unified by a
 project-memory store called the Spine.

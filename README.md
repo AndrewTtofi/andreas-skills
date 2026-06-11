@@ -1,4 +1,4 @@
-# andreas-skills
+# spine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skills-7c3aed.svg)](https://claude.com/claude-code)
@@ -6,14 +6,14 @@
 > A full-lifecycle engineering skill system that makes your coding agent work
 > like a senior engineer — from idea to production — and never lose the plot.
 
-Most skill collections are a drawer of loose tools. **andreas-skills** is a
+Most skill collections are a drawer of loose tools. **spine** is a
 connected lifecycle, unified by a project-memory store called the **Spine**.
 Every skill reads from and writes to it, so your agent carries understanding
 across phases *and* across sessions.
 
 ## The problems it solves
 
-Coding agents fail in three predictable ways. andreas-skills attacks all three
+Coding agents fail in three predictable ways. spine attacks all three
 with one structural idea — shared memory.
 
 1. **It builds the wrong thing.** It starts implementing before it understands
@@ -92,7 +92,7 @@ forgets and one that remembers.
 ## Install
 
 ```bash
-npx skills@latest add AndrewTtofi/andreas-skills
+npx skills@latest add AndrewTtofi/spine
 ```
 
 ## Skills (v1)

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping make andreas-skills better.
+Thanks for helping make spine better.
 
 ## Adding a skill
 

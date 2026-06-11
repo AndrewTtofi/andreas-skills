@@ -3,11 +3,11 @@
 **Date:** 2026-06-11
 **Status:** Approved (design) → pending implementation plan
 **Author:** Andreas Ttofi
-**Builds on:** `2026-06-11-andreas-skills-design.md` (v1)
+**Builds on:** `2026-06-11-spine-design.md` (v1)
 
 ## Goal
 
-Make andreas-skills v1 look and feel like a senior, trustworthy, *launch-ready*
+Make spine v1 look and feel like a senior, trustworthy, *launch-ready*
 project — without announcing it yet. Close the polish/governance/distribution
 gap vs `mattpocock/skills` while v1 still has only 5 skills.
 
@@ -58,7 +58,7 @@ Keep checks **structural** — no prose-policing.
 
 ### 4. Distribution-readiness (quiet)
 
-- Confirm `npx skills add AndrewTtofi/andreas-skills` resolves (note: requires
+- Confirm `npx skills add AndrewTtofi/spine` resolves (note: requires
   network; verify or document).
 - Set the GitHub repo **description + topics** so it is findable (public
   metadata, not an announcement) via `gh repo edit`.

@@ -1,6 +1,6 @@
 ---
 name: init
-description: Use to bootstrap the .spine/ project-memory store in a repo before using other andreas-skills. Detects the stack and seeds context.md, conventions.md, and journal.md. Run once per repo.
+description: Use to bootstrap the .spine/ project-memory store in a repo before using the other skills. Detects the stack and seeds context.md, conventions.md, and journal.md. Run once per repo.
 ---
 
 # init — bootstrap the Spine

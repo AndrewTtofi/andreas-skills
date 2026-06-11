@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Make andreas-skills v1 launch-ready (without announcing): a masterclass README, governance files, an extended validator that enforces wiring, and quietly-prepared distribution material.
+**Goal:** Make spine v1 launch-ready (without announcing): a masterclass README, governance files, an extended validator that enforces wiring, and quietly-prepared distribution material.
 
 **Architecture:** Same as v1 — `scripts/validate.mjs` is the test harness. Task 1 extends it (red), then governance files turn it green. Tasks 2–3 keep it green.
 
 **Tech Stack:** Markdown, JSON, Node 26, `gh` CLI.
 
-**Working dir:** `/Users/andreasttofi/Desktop/ttofis/skills-for-me/andreas-skills`, branch `v1-skills`.
+**Working dir:** `/Users/andreasttofi/Desktop/ttofis/skills-for-me/spine`, branch `v1-skills`.
 
 ---
 
@@ -171,7 +171,7 @@ Run `node scripts/validate.mjs` before every commit. It must pass.
 ```markdown
 # Contributing
 
-Thanks for helping make andreas-skills better.
+Thanks for helping make spine better.
 
 ## Adding a skill
 
@@ -218,7 +218,7 @@ git commit -m "chore: governance files + validator enforces wiring & metadata"
 - [ ] **Step 1: Overwrite `README.md` with the masterclass version**
 
 ````markdown
-# andreas-skills
+# spine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skills-7c3aed.svg)](https://claude.com/claude-code)
@@ -226,14 +226,14 @@ git commit -m "chore: governance files + validator enforces wiring & metadata"
 > A full-lifecycle engineering skill system that makes your coding agent work
 > like a senior engineer — from idea to production — and never lose the plot.
 
-Most skill collections are a drawer of loose tools. **andreas-skills** is a
+Most skill collections are a drawer of loose tools. **spine** is a
 connected lifecycle, unified by a project-memory store called the **Spine**.
 Every skill reads from and writes to it, so your agent carries understanding
 across phases *and* across sessions.
 
 ## The problems it solves
 
-Coding agents fail in three predictable ways. andreas-skills attacks all three
+Coding agents fail in three predictable ways. spine attacks all three
 with one structural idea — shared memory.
 
 1. **It builds the wrong thing.** It starts implementing before it understands
@@ -312,7 +312,7 @@ forgets and one that remembers.
 ## Install
 
 ```bash
-npx skills@latest add AndrewTtofi/andreas-skills
+npx skills@latest add AndrewTtofi/spine
 ```
 
 ## Skills (v1)
@@ -366,13 +366,13 @@ git commit -m "docs: masterclass README (narrative + Spine walkthrough)"
 ```markdown
 # Launch post (DRAFT — do not publish until v1.1)
 
-**Title:** andreas-skills — give your coding agent a memory
+**Title:** spine — give your coding agent a memory
 
 Most Claude Code skill collections are a drawer of loose tools. I wanted
 something that works like a senior engineer across a whole feature — and
 remembers what it learned.
 
-So I built **andreas-skills**, unified by one idea: the **Spine**, a `.spine/`
+So I built **spine**, unified by one idea: the **Spine**, a `.spine/`
 project-memory store every skill reads and writes. Your agent carries context
 across phases (align → build → verify) *and* across sessions.
 
@@ -386,8 +386,8 @@ The v1 loop:
 The payoff: close your laptop, open a fresh session tomorrow, and the agent
 resumes cold from `.spine/` — no re-explaining.
 
-Install: `npx skills@latest add AndrewTtofi/andreas-skills`
-Repo: https://github.com/AndrewTtofi/andreas-skills
+Install: `npx skills@latest add AndrewTtofi/spine`
+Repo: https://github.com/AndrewTtofi/spine
 
 Roadmap: design, ship, troubleshoot, new-skill — plus deeper reference files per
 skill. Feedback welcome.
@@ -402,7 +402,7 @@ Target list: https://github.com/hesreallyhim/awesome-claude-code (Skills/Plugins
 
 Proposed entry line:
 
-- [andreas-skills](https://github.com/AndrewTtofi/andreas-skills) — A full-lifecycle skill system unified by a `.spine/` project-memory store, so your agent carries context across phases and sessions (align → build → verify → remember).
+- [spine](https://github.com/AndrewTtofi/spine) — A full-lifecycle skill system unified by a `.spine/` project-memory store, so your agent carries context across phases and sessions (align → build → verify → remember).
 
 Submission checklist (for later):
 - [ ] Confirm the list's contribution format and section.
@@ -421,7 +421,7 @@ git commit -m "docs: draft (unpublished) launch + awesome-list material"
 
 Run:
 ```bash
-gh repo edit AndrewTtofi/andreas-skills \
+gh repo edit AndrewTtofi/spine \
   --description "A full-lifecycle Claude Code skill system unified by a .spine/ project-memory store — your agent works like a senior engineer and never loses context." \
   --add-topic claude-code --add-topic ai-agents --add-topic skills \
   --add-topic developer-tools --add-topic llm
@@ -430,7 +430,7 @@ Expected: command succeeds (exit 0). If `gh` lacks permission or network, report
 
 - [ ] **Step 5: Verify the skills.sh install path resolves (best-effort)**
 
-Run: `npx skills@latest add AndrewTtofi/andreas-skills --help` or attempt a dry resolution if supported. If network is unavailable, document that the command is unverified rather than failing the task.
+Run: `npx skills@latest add AndrewTtofi/spine --help` or attempt a dry resolution if supported. If network is unavailable, document that the command is unverified rather than failing the task.
 
 ---
 

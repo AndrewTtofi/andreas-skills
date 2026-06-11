@@ -4,7 +4,7 @@ Target list: https://github.com/hesreallyhim/awesome-claude-code (Skills/Plugins
 
 Proposed entry line:
 
-- [andreas-skills](https://github.com/AndrewTtofi/andreas-skills) — A full-lifecycle skill system unified by a `.spine/` project-memory store, so your agent carries context across phases and sessions (init → align → build → verify → remember).
+- [spine](https://github.com/AndrewTtofi/spine) — A full-lifecycle skill system unified by a `.spine/` project-memory store, so your agent carries context across phases and sessions (init → align → build → verify → remember).
 
 Submission checklist (for later):
 - [ ] Confirm the list's contribution format and section.
