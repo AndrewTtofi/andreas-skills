@@ -24,7 +24,7 @@ description: Use when work is supposedly complete, before claiming it is done or
 
 ## Spine I/O
 
-- **Reads:** `journal.md` (criteria), `conventions.md` (commands).
+- **Reads:** `journal.md` (criteria), `conventions.md` (commands), `context.md` (language).
 - **Writes:** `journal.md` (verification result).
 
 ## Notes
