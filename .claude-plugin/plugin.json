@@ -6,6 +6,7 @@
   "skills": [
     "./skills/init",
     "./skills/align",
+    "./skills/design",
     "./skills/build",
     "./skills/verify",
     "./skills/remember"

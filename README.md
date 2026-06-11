@@ -47,7 +47,7 @@ with one structural idea — shared memory.
         │   context · conventions · journal · decisions   │
         └─────────────────────────────────────────────────┘
 
-        init → align → build → verify → remember
+        init → align → design → build → verify → remember
 ```
 
 ## A walkthrough
@@ -95,15 +95,16 @@ forgets and one that remembers.
 npx skills@latest add AndrewTtofi/spine
 ```
 
-## Skills (v1)
+## Skills
 
 - **[init](./skills/init/SKILL.md)** — Bootstrap the `.spine/` store; detect the stack, seed context/conventions/journal.
 - **[align](./skills/align/SKILL.md)** — Grill intent until acceptance criteria are crisp, before building.
+- **[design](./skills/design/SKILL.md)** — Turn criteria into a concrete architecture (deep modules, ADRs) before code.
 - **[build](./skills/build/SKILL.md)** — Implement features as small TDD vertical slices that follow your conventions.
 - **[verify](./skills/verify/SKILL.md)** — Check work against the criteria with real evidence before claiming done.
 - **[remember](./skills/remember/SKILL.md)** — Distill the session back into the Spine so the next one starts informed.
 
-Roadmap (v1.1): `design`, `ship`, `troubleshoot`, `new-skill`.
+Roadmap (v1.1): `ship`, `troubleshoot`, `new-skill`.
 
 ## Philosophy
 
