@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, extname } from "node:path";
 import { readSpine } from "./spine-reader.mjs";
 import { renderMarkdown } from "./markdown.mjs";
+import { buildGraph } from "./graph-builder.mjs";
 
 const publicDir = join(import.meta.dirname, "public");
 const MIME = {
@@ -31,6 +32,11 @@ export function createDashboardServer(spineDir = join(process.cwd(), ".spine")) 
     if (req.url === "/api/spine") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(renderedSpine(spineDir)));
+      return;
+    }
+    if (req.url === "/api/graph") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(buildGraph(spineDir)));
       return;
     }
     const path = req.url === "/" ? "/index.html" : req.url.split("?")[0];

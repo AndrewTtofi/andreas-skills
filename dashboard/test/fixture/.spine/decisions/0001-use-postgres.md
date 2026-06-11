@@ -4,4 +4,8 @@
 
 ## Context
 
-We need relational integrity.
+The **core** domain logic needs relational integrity for invoices and clients.
+
+## Decision
+
+Use Postgres.

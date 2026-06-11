@@ -16,6 +16,10 @@ test("serves rendered spine JSON and the shell", async () => {
     assert.match(api.context, /<h1>Project Context<\/h1>/);
     assert.match(api.decisions[0].html, /<h1>/);
 
+    const graph = await fetch(`http://localhost:${port}/api/graph`).then((r) => r.json());
+    assert.ok(graph.nodes.length >= 7);
+    assert.ok(graph.edges.some((e) => e.rel === "affects"));
+
     const html = await fetch(`http://localhost:${port}/`).then((r) => r.text());
     assert.match(html, /<!DOCTYPE html>/i);
 
