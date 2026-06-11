@@ -42,12 +42,12 @@ with one structural idea — shared memory.
 | `decisions/` | ADRs — the *why* behind choices |
 
 ```
-        ┌──────────────────────────────────────────────┐
-        │                THE SPINE (.spine/)             │
-        │   context · conventions · journal · decisions  │
-        └──────────────────────────────────────────────┘
-           ▲      ▲       ▲        ▲          ▲
-  init → align → build → verify → remember
+        ┌─────────────────────────────────────────────────┐
+        │               THE SPINE (.spine/)               │
+        │   context · conventions · journal · decisions   │
+        └─────────────────────────────────────────────────┘
+
+        init → align → build → verify → remember
 ```
 
 ## A walkthrough
