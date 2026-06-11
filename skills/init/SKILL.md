@@ -25,6 +25,8 @@ This skill creates it.
 4. **Confirm with the user.** Show the seeded `conventions.md` commands and the
    `context.md` architecture map; correct anything wrong before finishing.
 5. **Suggest committing** `.spine/` so the memory is shared with the team.
+6. **Point to the dashboard.** Tell the user they can view the Spine anytime in
+   a browser with `npx spine-dashboard` (read-only).
 
 ## Spine I/O
 
