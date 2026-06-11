@@ -1,6 +1,9 @@
 // Minimal, zero-dependency markdown -> HTML for the Spine's controlled content.
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+// Block dangerous URL schemes; everything else (http(s), mailto, relative, #) is fine.
+const safeUrl = (u) => (/^\s*(javascript|data|vbscript):/i.test(u) ? "#" : u);
+
 function inline(s) {
   let t = esc(s);
   t = t.replace(/`([^`]+)`/g, (_, c) => `<code>${c}</code>`);
@@ -8,7 +11,7 @@ function inline(s) {
   t = t.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
   t = t.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    (_, txt, url) => `<a href="${url}" target="_blank" rel="noopener">${txt}</a>`
+    (_, txt, url) => `<a href="${safeUrl(url)}" target="_blank" rel="noopener">${txt}</a>`
   );
   return t;
 }

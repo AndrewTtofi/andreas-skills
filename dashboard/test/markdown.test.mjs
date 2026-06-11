@@ -15,6 +15,10 @@ test("table", () => {
   assert.match(h, /<th>a<\/th>/);
   assert.match(h, /<td>1<\/td>/);
 });
+test("blocks dangerous link schemes", () => {
+  assert.doesNotMatch(renderMarkdown("[x](javascript:alert(1))"), /javascript:/i);
+  assert.match(renderMarkdown("[x](https://ok.com)"), /href="https:\/\/ok\.com"/);
+});
 test("code fence escapes content", () => {
   const h = renderMarkdown("```\n<x>\n```");
   assert.match(h, /<pre><code>&lt;x&gt;<\/code><\/pre>/);
