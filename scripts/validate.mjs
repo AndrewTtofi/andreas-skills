@@ -40,6 +40,19 @@ for (const rel of plugin.skills ?? []) {
   if (name && desc) ok(`${rel} (${name})`);
 }
 
+const readmePath = join(root, "README.md");
+if (existsSync(readmePath)) {
+  const readme = readFileSync(readmePath, "utf8");
+  for (const rel of plugin.skills ?? []) {
+    const name = basename(rel);
+    if (!readme.includes(`skills/${name}/SKILL.md`)) {
+      errors.push(`README.md does not reference skills/${name}/SKILL.md`);
+    }
+  }
+} else {
+  errors.push("README.md missing");
+}
+
 if (errors.length) {
   console.error("\nVALIDATION FAILED:");
   for (const e of errors) console.error(`  - ${e}`);
