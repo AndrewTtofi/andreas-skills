@@ -1,0 +1,10 @@
+{
+  "name": "andreas-skills",
+  "skills": [
+    "./skills/init",
+    "./skills/align",
+    "./skills/build",
+    "./skills/verify",
+    "./skills/remember"
+  ]
+}
