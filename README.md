@@ -1,16 +1,38 @@
-# andreas-skills
+# spine
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-skills-7c3aed.svg)](https://claude.com/claude-code)
 
 > A full-lifecycle engineering skill system that makes your coding agent work
 > like a senior engineer — from idea to production — and never lose the plot.
 
-Most skill collections are a drawer of loose tools. **andreas-skills** is a
+Most skill collections are a drawer of loose tools. **spine** is a
 connected lifecycle, unified by a project-memory store called the **Spine**.
 Every skill reads from and writes to it, so your agent carries understanding
 across phases *and* across sessions.
 
+## The problems it solves
+
+Coding agents fail in three predictable ways. spine attacks all three
+with one structural idea — shared memory.
+
+1. **It builds the wrong thing.** It starts implementing before it understands
+   what you want. → **[`align`](./skills/align/SKILL.md)** grills intent into
+   crisp, testable acceptance criteria *before* any code is written, and records
+   them in the Spine.
+2. **The code is fragile and over-complex.** It works once, then rots into a
+   ball of mud. → **[`build`](./skills/build/SKILL.md)** works in small TDD
+   vertical slices and follows the conventions stored in the Spine;
+   **[`verify`](./skills/verify/SKILL.md)** refuses to call anything "done"
+   without evidence.
+3. **It loses context between sessions.** It forgets decisions, re-explores, and
+   repeats mistakes. → **[`remember`](./skills/remember/SKILL.md)** distills each
+   session back into the Spine, so the next session starts informed instead of
+   cold.
+
 ## The Spine
 
-`init` creates a `.spine/` folder in your repo:
+[`init`](./skills/init/SKILL.md) creates a `.spine/` folder in your repo:
 
 | File | Holds |
 |---|---|
@@ -19,20 +41,58 @@ across phases *and* across sessions.
 | `journal.md` | Current focus, next step, history |
 | `decisions/` | ADRs — the *why* behind choices |
 
-The Spine attacks the three classic agent failures at once: building the wrong
-thing, fragile/over-complex code, and losing context between sessions.
-
-## The lifecycle loop
-
 ```
-align → build → verify → remember
-        (with the Spine read & written at every step)
+        ┌─────────────────────────────────────────────────┐
+        │               THE SPINE (.spine/)               │
+        │   context · conventions · journal · decisions   │
+        └─────────────────────────────────────────────────┘
+
+        init → align → build → verify → remember
 ```
+
+## A walkthrough
+
+A single feature, end to end — watch the Spine fill up.
+
+```text
+> init
+  Detected: Next.js + TypeScript, Vitest. Seeded .spine/ ✓
+
+> align  "add CSV export to the invoices table"
+  …a few sharp questions…
+  Wrote acceptance criteria to .spine/journal.md:
+    - [ ] Export button downloads a CSV of the currently filtered rows
+    - [ ] Columns: date, client, amount, status
+    - [ ] Empty result exports headers only
+
+> build
+  RED → GREEN, slice by slice. Commits each slice.
+  journal.md: 3/3 criteria ticked.
+
+> verify
+  vitest: 7 passed. 3/3 criteria met, with evidence. ✓
+
+> remember
+  Wrote ADR-0001 (CSV via streaming), updated conventions,
+  compacted the journal, left a handoff. ✓
+```
+
+The next day — a **fresh session, zero prior context**:
+
+```text
+> read .spine/ and tell me where we left off
+  Last session shipped CSV export for invoices (ADR-0001, streaming approach).
+  Conventions now include the export pattern. No open focus.
+  Ready for the next thing — no re-explaining needed.
+```
+
+That last step is the point. The Spine is the difference between an agent that
+forgets and one that remembers.
 
 ## Install
 
 ```bash
-npx skills@latest add AndrewTtofi/andreas-skills
+npx skills@latest add AndrewTtofi/spine
 ```
 
 ## Skills (v1)
@@ -51,6 +111,11 @@ Small, composable, model-agnostic, reusable in any repo. Progressive disclosure
 (thin skills, references on demand). AI-native efficiency. Built on engineering
 fundamentals, not process ceremony.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) and the conventions in
+[CLAUDE.md](./CLAUDE.md).
+
 ## License
 
-MIT
+[MIT](./LICENSE)

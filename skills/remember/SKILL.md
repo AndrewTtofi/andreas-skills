@@ -25,6 +25,7 @@ that pays that forward.
 
 ## Spine I/O
 
+- **Reads:** `journal.md`, `context.md`, `conventions.md` (the current Spine, to distill the session into it).
 - **Writes:** `context.md`, `conventions.md`, `journal.md`, `decisions/`.
 
 ## Notes

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Validates that every skill listed in plugin.json is structurally sound.
+// Validates that every skill listed in plugin.json is structurally sound,
+// wired into the README and skill index, and that plugin metadata is present.
 import { readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 
@@ -15,6 +16,11 @@ if (!existsSync(pluginPath)) {
 const plugin = JSON.parse(readFileSync(pluginPath, "utf8"));
 if (!Array.isArray(plugin.skills) || plugin.skills.length === 0) {
   errors.push("plugin.json has no skills[]");
+}
+
+// plugin.json must carry discovery metadata
+for (const field of ["name", "description", "version", "author"]) {
+  if (!plugin[field]) errors.push(`plugin.json missing "${field}"`);
 }
 
 for (const rel of plugin.skills ?? []) {
@@ -40,17 +46,23 @@ for (const rel of plugin.skills ?? []) {
   if (name && desc) ok(`${rel} (${name})`);
 }
 
-const readmePath = join(root, "README.md");
-if (existsSync(readmePath)) {
-  const readme = readFileSync(readmePath, "utf8");
+// Every skill must be wired into both the README and the skill index.
+const wiring = [
+  ["README.md", join(root, "README.md")],
+  ["skills/README.md", join(root, "skills/README.md")],
+];
+for (const [label, path] of wiring) {
+  if (!existsSync(path)) {
+    errors.push(`${label} missing`);
+    continue;
+  }
+  const text = readFileSync(path, "utf8");
   for (const rel of plugin.skills ?? []) {
     const name = basename(rel);
-    if (!readme.includes(`skills/${name}/SKILL.md`)) {
-      errors.push(`README.md does not reference skills/${name}/SKILL.md`);
+    if (!text.includes(`${name}/SKILL.md`)) {
+      errors.push(`${label} does not reference ${name}/SKILL.md`);
     }
   }
-} else {
-  errors.push("README.md missing");
 }
 
 if (errors.length) {
