@@ -106,6 +106,18 @@ npx skills@latest add AndrewTtofi/spine
 
 Roadmap (v1.1): `ship`, `troubleshoot`, `new-skill`.
 
+## Dashboard
+
+See your Spine in a browser — a read-only local dashboard that renders
+`.spine/` (architecture map, journal timeline, and browsable ADRs):
+
+```bash
+npx spine-dashboard
+```
+
+Run it from any repo that has a `.spine/`. Zero dependencies, nothing copied
+into your project. Source lives in [`dashboard/`](./dashboard).
+
 ## Philosophy
 
 Small, composable, model-agnostic, reusable in any repo. Progressive disclosure

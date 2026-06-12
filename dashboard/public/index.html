@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>spine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">spine</span>
+      <span class="brand-sub">project memory</span>
+    </div>
+    <div class="modes">
+      <button class="mode active" data-mode="graph">Graph</button>
+      <button class="mode" data-mode="docs">Docs</button>
+    </div>
+  </header>
+
+  <section id="graph-view" class="view">
+    <div id="cy"></div>
+    <div class="legend" id="legend"></div>
+    <div class="hint" id="hint">click a node to read it · drag to explore</div>
+    <aside id="panel" class="panel" hidden></aside>
+  </section>
+
+  <section id="docs-view" class="view" hidden>
+    <aside class="docs-rail"><nav id="nav"></nav></aside>
+    <main id="main"></main>
+  </section>
+
+  <script src="/app.js"></script>
+</body>
+</html>

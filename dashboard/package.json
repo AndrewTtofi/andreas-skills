@@ -1,0 +1,11 @@
+{
+  "name": "spine-dashboard",
+  "version": "0.1.0",
+  "description": "Read-only local dashboard for a project's .spine/ memory store.",
+  "type": "module",
+  "bin": { "spine-dashboard": "./server.mjs" },
+  "files": ["server.mjs", "spine-reader.mjs", "markdown.mjs", "public/"],
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test", "start": "node server.mjs" },
+  "license": "MIT"
+}
