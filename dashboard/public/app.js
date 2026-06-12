@@ -58,64 +58,78 @@ function switchMode(m) {
 }
 
 function renderGraph() {
+  // Obsidian-style: node size scales with how connected a node is (its degree).
+  const deg = {};
+  graph.nodes.forEach((n) => (deg[n.id] = 0));
+  graph.edges.forEach((e) => {
+    deg[e.source] = (deg[e.source] ?? 0) + 1;
+    deg[e.target] = (deg[e.target] ?? 0) + 1;
+  });
+  const nodeSize = (e) => 18 + Math.sqrt(e.data("deg")) * 11;
+
   const elements = [
-    ...graph.nodes.map((n) => ({ data: { id: n.id, label: n.label, type: n.type } })),
+    ...graph.nodes.map((n) => ({ data: { id: n.id, label: n.label, type: n.type, deg: deg[n.id] || 0 } })),
     ...graph.edges.map((e, i) => ({ data: { id: "e" + i, source: e.source, target: e.target, rel: e.rel } })),
   ];
   cy = cytoscape({
     container: $("#cy"),
     elements,
-    minZoom: 0.3,
-    maxZoom: 2.5,
-    layout: { name: "cose", animate: true, animationDuration: 800, padding: 64, idealEdgeLength: 130, nodeRepulsion: 11000, gravity: 0.3 },
+    minZoom: 0.2,
+    maxZoom: 3,
+    wheelSensitivity: 0.25,
     style: [
       {
         selector: "node",
         style: {
           "background-color": (e) => TYPE[e.data("type")].color,
-          shape: (e) => TYPE[e.data("type")].shape,
-          width: 16,
-          height: 16,
+          "background-opacity": 0.95,
+          shape: "ellipse",
+          width: nodeSize,
+          height: nodeSize,
           label: "data(label)",
-          color: "#cdd8ee",
-          "font-family": "IBM Plex Mono, monospace",
-          "font-size": 11,
+          color: "#c9d4ec",
+          "font-family": "IBM Plex Sans, system-ui, sans-serif",
+          "font-size": 12,
+          "font-weight": 500,
           "text-valign": "bottom",
           "text-halign": "center",
           "text-margin-y": 7,
           "text-outline-color": "#05060a",
-          "text-outline-width": 3,
-          "border-width": 7,
+          "text-outline-width": 2,
+          "min-zoomed-font-size": 9,
+          "border-width": 8,
           "border-color": (e) => TYPE[e.data("type")].color,
-          "border-opacity": 0.16,
-          "transition-property": "border-opacity, width, height",
+          "border-opacity": 0.14,
+          "transition-property": "border-opacity, background-opacity",
           "transition-duration": "160ms",
         },
       },
-      { selector: "node[type='focus']", style: { width: 24, height: 24 } },
       {
         selector: "edge",
         style: {
-          width: 1,
-          "line-color": "#56688f",
-          opacity: 0.45,
-          "curve-style": "straight",
+          width: 1.1,
+          "line-color": "#4a5878",
+          opacity: 0.4,
+          "curve-style": "bezier",
           label: "data(rel)",
           "font-family": "IBM Plex Mono, monospace",
-          "font-size": 8,
-          color: "#7d8bb0",
+          "font-size": 9,
+          color: "#9fb0d4",
           "text-opacity": 0,
+          "text-rotation": "autorotate",
           "text-background-color": "#05060a",
-          "text-background-opacity": 0.7,
+          "text-background-opacity": 0.75,
           "text-background-padding": 3,
         },
       },
-      { selector: "node:selected", style: { "border-opacity": 0.6, width: 22, height: 22 } },
-      { selector: ".dim", style: { opacity: 0.12, "text-opacity": 0 } },
+      { selector: "node:selected", style: { "border-opacity": 0.6, "background-opacity": 1 } },
+      { selector: ".dim", style: { opacity: 0.08, "text-opacity": 0 } },
       { selector: "node.hot", style: { "border-opacity": 0.5 } },
-      { selector: "edge.hot", style: { opacity: 1, "text-opacity": 0.95, "line-color": "#9fb4dd", width: 1.6 } },
+      { selector: "edge.hot", style: { opacity: 0.95, "text-opacity": 0.95, "line-color": "#aebfe4", width: 1.8 } },
     ],
   });
+
+  runForceLayout();
 
   cy.on("tap", "node", (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
@@ -123,6 +137,43 @@ function renderGraph() {
   });
   cy.on("mouseover", "node", (evt) => highlight(evt.target));
   cy.on("mouseout", "node", clearHighlight);
+}
+
+// Obsidian-like organic spread. Prefer fcose (high-quality force layout);
+// fall back to the built-in cose if the fcose CDN script didn't load.
+function runForceLayout() {
+  const fcose = {
+    name: "fcose",
+    quality: "proof",
+    animate: true,
+    animationDuration: 900,
+    randomize: true,
+    fit: true,
+    padding: 90,
+    nodeSeparation: 150,
+    idealEdgeLength: 130,
+    nodeRepulsion: 9000,
+    gravity: 0.18,
+    gravityRange: 3.6,
+    numIter: 2500,
+  };
+  const cose = {
+    name: "cose",
+    animate: true,
+    animationDuration: 900,
+    fit: true,
+    padding: 90,
+    idealEdgeLength: 130,
+    nodeRepulsion: 14000,
+    gravity: 0.2,
+    componentSpacing: 180,
+    nodeOverlap: 28,
+  };
+  try {
+    cy.layout(fcose).run();
+  } catch {
+    cy.layout(cose).run();
+  }
 }
 
 function highlight(node) {
