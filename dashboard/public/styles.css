@@ -82,6 +82,9 @@ body {
 .mode.active { background: rgba(127, 212, 255, 0.14); color: var(--cyan); }
 
 .view { position: fixed; inset: 64px 0 0; z-index: 5; }
+/* ID selectors below (e.g. #docs-view) outrank the UA [hidden] rule, so make
+   hiding explicit and authoritative — otherwise the graph bleeds through. */
+.view[hidden] { display: none !important; }
 
 /* ---------- graph ---------- */
 #cy { position: absolute; inset: 0; }
@@ -157,7 +160,13 @@ body {
 .panel-close:hover { color: var(--text); border-color: var(--line-strong); }
 
 /* ---------- docs ---------- */
-#docs-view { display: grid; grid-template-columns: 230px 1fr; }
+#docs-view {
+  display: grid; grid-template-columns: 230px 1fr;
+  background:
+    radial-gradient(120% 90% at 78% -10%, rgba(127, 212, 255, 0.1), transparent 55%),
+    radial-gradient(90% 80% at 10% 110%, rgba(200, 168, 255, 0.1), transparent 50%),
+    var(--space);
+}
 .docs-rail { padding: 30px 18px; border-right: 1px solid var(--line); }
 nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
