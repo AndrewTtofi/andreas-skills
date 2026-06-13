@@ -17,11 +17,56 @@ Assumptions: a PR's commits = reachable from merge's 2nd parent, not its 1st
 merge render standalone ("loose"); clustering keys on merge commits, so squash/
 rebase repos show loose commits (known limit); zero new deps.
 
+## Current focus
+
+**Dashboard iteration 3 — professional + cohesive graph** (lands in the open
+PR #8). Feedback: the node-graph still looks scattered (loose dots, far-right ADR
+lane, floating focus), the colours aren't professional, and PR #8 (unmerged) isn't
+clustered. Keep it **nodes-and-links**, but: cluster every commit, nest decisions
+into clusters, integrate focus into the spine, and reskin to a **refined-dark**
+palette (charcoal + slate + one indigo accent; no neon, no starfield).
+
 ## Next step
 
-**Shipped** → PR #8 (https://github.com/AndrewTtofi/spine/pull/8),
-`dashboard-approachability` → `main`. Awaiting review/merge; run `remember` once
-merged.
+`build` slice 1: segment + in-flight clustering in `graph-builder`, test-first.
+
+## Build plan (iteration 3)
+
+Design in [[0006-cluster-every-commit-into-segments]],
+[[0007-refined-dark-professional-palette]].
+
+1. **`graph-builder` segments** — RED: injected history with a PR merge + an
+   unmerged run above it + a pre-PR run; assert `segment` nodes ("Current branch"
+   newest, "Direct to main" older), every commit tagged with a group, no loose
+   commits. GREEN + commit.
+2. **`app.js` cohesion + palette** — single vertical column; nest decisions into
+   clusters (count when collapsed, adjacent when expanded); focus node at the top
+   of the spine; rewrite Cytoscape colours to charcoal/slate/indigo. Verify live.
+3. **`styles.css` + `index.html`** — refined-dark palette variables; delete the
+   starfield. Verify live (graph + docs).
+4. **verify** — suite + validator green; screenshots; criteria. PR #8 updates.
+
+## Acceptance criteria (iteration 3)
+
+Graph cohesion + completeness (still Cytoscape nodes+links):
+- [ ] Every mainline commit belongs to a cluster — no bare loose dots. PR merges
+      → PR clusters; contiguous non-merge runs → segment clusters.
+- [ ] In-flight work (commits newer than the latest PR merge on the first-parent
+      chain) clusters as "Current branch" — so PR #8's commits cluster.
+- [ ] Decisions nest into their cluster: collapsed shows a decision count;
+      expanding reveals ADR nodes adjacent to the cluster (no far-right lane).
+- [ ] Focus is integrated at the top of the spine (linked into the column), not
+      floating in a side margin.
+- [ ] Layout stays a single tidy vertical column.
+
+Palette (refined dark, professional):
+- [ ] Charcoal bg (#0d0f14), slate text, hairline borders, a single indigo accent
+      (#6e7bf2). No neon (cyan/amber/violet/mint), no starfield.
+- [ ] Applied consistently across graph, topbar, and docs.
+
+Cross-cutting:
+- [ ] Zero new deps; graph-builder tests for segment + in-flight clustering;
+      `node --test` + `validate.mjs` green.
 
 ## Verification (2026-06-13, iteration 2)
 
