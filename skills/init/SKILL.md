@@ -22,17 +22,38 @@ This skill creates it.
    - `.spine/decisions/` (empty, with a `.gitkeep`)
    Seed each from this skill's `templates/`, filling in detected values. Leave
    `<placeholders>` only where you genuinely lack information, and flag them.
-4. **Confirm with the user.** Show the seeded `conventions.md` commands and the
+4. **Install the contracting gate.** This makes `align` fire for every
+   non-trivial request in this repo — the gate ships with the Spine, not just
+   with the plugin. Two artifacts, both *merged* into what already exists (never
+   clobber):
+   - `.claude/settings.json` — merge in the `UserPromptSubmit` hook from
+     [templates/settings.gate.json](templates/settings.gate.json). It self-gates
+     on `.spine/` existing, so it stays silent in a checkout where the Spine was
+     removed. If the file already has a `hooks.UserPromptSubmit` array, append
+     this entry; don't duplicate it if an identical Spine-gate command is
+     already present.
+   - `CLAUDE.md` — append the block from
+     [templates/claude-gate.md](templates/claude-gate.md) (create `CLAUDE.md` if
+     absent). It's wrapped in opening/closing `spine:contracting-gate` markers;
+     if the opening marker is already present anywhere in the file, the block is
+     installed — leave it, don't add a second copy.
+5. **Confirm with the user.** Show the seeded `conventions.md` commands and the
    `context.md` architecture map; correct anything wrong before finishing.
-5. **Suggest committing** `.spine/` so the memory is shared with the team.
-6. **Point to the dashboard.** Tell the user they can view the Spine anytime in
+   Mention that the contracting gate is now active.
+6. **Suggest committing** `.spine/`, `.claude/settings.json`, and `CLAUDE.md` so
+   the memory and the gate are shared with the team.
+7. **Point to the dashboard.** Tell the user they can view the Spine anytime in
    a browser with `npx spine-dashboard` (read-only).
 
 ## Spine I/O
 
 - **Writes:** `context.md`, `conventions.md`, `journal.md`, `decisions/`.
+- **Also writes (outside `.spine/`):** `.claude/settings.json` (contracting-gate
+  hook), `CLAUDE.md` (contracting-gate instruction).
 
 ## Notes
 
 - Never invent commands you haven't verified exist in the manifest/scripts.
 - The Spine is for durable knowledge, not transient chatter.
+- Merge, never overwrite, `.claude/settings.json` and `CLAUDE.md` — they
+  routinely hold unrelated config the user cares about.

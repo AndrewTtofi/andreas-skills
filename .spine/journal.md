@@ -18,7 +18,8 @@ No open focus.
 
 ## Next step
 
-None pending. Candidate follow-ups (not committed to):
+**Await review / merge of PR #12** (the contracting gate). Then candidate
+follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
   currently overlap a neighbour; the default brain is overlap-free).
 - Surface more `concept` nodes (only "Spine" crosses the ≥2-ADR bar today).
@@ -26,6 +27,16 @@ None pending. Candidate follow-ups (not committed to):
 
 ## History
 
+- 2026-06-13 {skills, align, init, gate, dogfood} — **PR #12 (open)**: the
+  **contracting gate**. `align` reworked into an extensive, certainty-gated
+  intent interview — 12 interrogation dimensions, an explicit confidence score,
+  and a context playback the user must confirm before any building. `init` now
+  **installs the gate into any repo** (self-gating `UserPromptSubmit` hook in
+  `.claude/settings.json` + marker-delimited `CLAUDE.md` block), so enforcement
+  ships with the Spine rather than living only here. Installed + dogfooded on
+  this repo; `.gitignore` narrowed so the shared hook is committed.
+  `validate.mjs` green; hook verified silent-without/fires-with `.spine/`; merge
+  proven idempotent.
 - 2026-06-13 {dashboard, graph, ux, labels, layout} — **PR #11 (merged,
   `95b78e6`)**: a queryable + navigable brain — a **labels** layer (derived
   `type`/`scope` + explicit Spine labels the skills write)
