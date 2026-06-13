@@ -127,6 +127,16 @@ function computeElements() {
     seen.add(key);
     edges.push({ data: { id: `e${edges.length}`, source: s, target: t, rel: e.rel } });
   }
+  // Anchor an expanded cluster's commits to it so they sprout nearby, not adrift.
+  for (const n of visible) {
+    if (isGroup(n) && expanded.has(n.id)) {
+      for (const c of graph.nodes) {
+        if (c.type === "commit" && c.group === n.id) {
+          edges.push({ data: { id: `e${edges.length}`, source: n.id, target: c.id, rel: "contains" } });
+        }
+      }
+    }
+  }
   return [...visible.map((n) => ({ data: nodeData(n) })), ...edges];
 }
 
@@ -172,11 +182,43 @@ function runLayout(randomize = true) {
   }
 }
 
+// Expand/collapse a cluster WITHOUT reshuffling the rest of the brain: snapshot
+// every current node's position, rebuild, then run fcose with all pre-existing
+// nodes pinned so only the cluster's new commits get placed.
 function toggleGroup(id) {
+  const prev = {};
+  cy.nodes().forEach((n) => (prev[n.id()] = { ...n.position() }));
   expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+
   cy.elements().remove();
   cy.add(computeElements());
-  runLayout(false);
+
+  const anchor = prev[id] || { x: 0, y: 0 };
+  cy.nodes().forEach((n) => {
+    if (prev[n.id()]) n.position(prev[n.id()]);
+    else n.position({ x: anchor.x + (Math.random() - 0.5) * 90, y: anchor.y + 70 + (Math.random() - 0.5) * 90 });
+  });
+
+  // Collapse adds no new nodes → nothing to lay out; leave everything put.
+  if (!cy.nodes().some((n) => prev[n.id()] === undefined)) return;
+
+  const fixed = cy.nodes().filter((n) => prev[n.id()] !== undefined).map((n) => ({ nodeId: n.id(), position: prev[n.id()] }));
+  try {
+    cy.layout({
+      name: "fcose",
+      quality: "default",
+      animate: true,
+      animationDuration: 450,
+      randomize: false,
+      fit: false,
+      fixedNodeConstraint: fixed,
+      nodeRepulsion: 6000,
+      idealEdgeLength: 60,
+      numIter: 800,
+    }).run();
+  } catch {
+    /* fallback: keep the seeded positions */
+  }
 }
 
 function graphStyle() {
@@ -290,6 +332,7 @@ function graphStyle() {
     { selector: "edge", style: { "curve-style": "bezier", width: 1, opacity: 0.85, "line-color": LINE } },
     { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 1.6 } },
     { selector: 'edge[rel="touches"]', style: { "line-color": "#dfe4ea", width: 1 } },
+    { selector: 'edge[rel="contains"]', style: { "line-color": "#e7ebf0", width: 1, opacity: 0.7 } },
     { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },
     { selector: 'edge[rel="references"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.5 } },
     { selector: 'edge[rel="supersedes"]', style: { "line-color": ACCENT, "line-style": "dotted", width: 1.6, opacity: 0.7 } },
