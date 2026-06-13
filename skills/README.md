@@ -7,6 +7,10 @@ The lifecycle loop. Each skill reads from and writes to the Spine (`.spine/`).
 - **[design](./design/SKILL.md)** — Turn criteria into a concrete architecture (deep modules, ADRs) before code.
 - **[build](./build/SKILL.md)** — Implement features as small TDD vertical slices that follow your conventions.
 - **[verify](./verify/SKILL.md)** — Check work against the criteria with real evidence before claiming done.
+- **[ship](./ship/SKILL.md)** — Land verified work as a clean branch + PR, with a body drawn from the Spine.
+- **[troubleshoot](./troubleshoot/SKILL.md)** — Root-cause a bug — investigate, reproduce, fix — and record the lesson.
 - **[remember](./remember/SKILL.md)** — Distill the session back into the Spine so the next one starts informed.
 
-Roadmap (v1.1): `ship`, `troubleshoot`, `new-skill`.
+Meta:
+
+- **[new-skill](./new-skill/SKILL.md)** — Scaffold a new spine skill, wired and validator-green.

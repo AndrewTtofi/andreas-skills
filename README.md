@@ -47,7 +47,9 @@ with one structural idea — shared memory.
         │   context · conventions · journal · decisions   │
         └─────────────────────────────────────────────────┘
 
-        init → align → design → build → verify → remember
+  init → align → design → build → verify → ship → remember
+                              ↕
+                        troubleshoot   (loop in whenever something breaks)
 ```
 
 ## A walkthrough
@@ -102,9 +104,13 @@ npx skills@latest add AndrewTtofi/spine
 - **[design](./skills/design/SKILL.md)** — Turn criteria into a concrete architecture (deep modules, ADRs) before code.
 - **[build](./skills/build/SKILL.md)** — Implement features as small TDD vertical slices that follow your conventions.
 - **[verify](./skills/verify/SKILL.md)** — Check work against the criteria with real evidence before claiming done.
+- **[ship](./skills/ship/SKILL.md)** — Land verified work as a clean branch + PR, with a body drawn from the Spine.
+- **[troubleshoot](./skills/troubleshoot/SKILL.md)** — Root-cause a bug — investigate, reproduce, fix — and record the lesson so it doesn't return.
 - **[remember](./skills/remember/SKILL.md)** — Distill the session back into the Spine so the next one starts informed.
 
-Roadmap (v1.1): `ship`, `troubleshoot`, `new-skill`.
+Extending spine:
+
+- **[new-skill](./skills/new-skill/SKILL.md)** — Scaffold a new spine skill — wired into the manifest, README, and index, and validator-green.
 
 ## Dashboard
 
