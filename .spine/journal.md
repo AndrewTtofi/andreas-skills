@@ -17,10 +17,9 @@ readable.
 
 ## Next step
 
-Brain built + verified (37/37, validator green). **Opened PR #9**
-(https://github.com/AndrewTtofi/spine/pull/9) for the cohesion + Stripe-light +
-brain work — which had been committed to the branch *after* PR #8 merged and so
-was orphaned (not in main / no PR). Awaiting review/merge, then `remember`.
+Brain done, density-tuned (14→8 code-module hubs), verified (38/38, validator
+green, no console errors — /tmp/spine-brain-clean.png). In **PR #9**
+(https://github.com/AndrewTtofi/spine/pull/9). Merging, then `remember`.
 
 Process note: PR #8 (PR-clustering + three-pane docs) was merged at 08:55 UTC; I
 kept committing to the same branch and wrongly reported "pushed to PR #8". Check
