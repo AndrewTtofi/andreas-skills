@@ -19,8 +19,8 @@ rebase repos show loose commits (known limit); zero new deps.
 
 ## Next step
 
-`build` slice 2: frontend collapse/expand — render `pr` nodes collapsed by
-default, click to expand members + reflow, re-point boundary edges to the group.
+`build` slice 3: Docs three-pane redesign — sectioned sidebar (active + ADR
+count), ~720px content + header, client-generated TOC rail.
 
 ## Build plan (TDD vertical slices)
 
@@ -51,12 +51,14 @@ Graph — PR clustering:
       1st (the branch's commits), computed from the DAG.
 - [x] Commits not under any merged PR render as standalone `commit` nodes (real
       repo: 47 grouped, 5 loose).
-- [ ] Groups are collapsed by default; clicking a `pr` node expands/collapses its
-      commits inline and the layout reflows. (frontend — slice 2)
-- [ ] ADR `decision` nodes attach to the PR group (or loose commit) containing
-      their commit; focus pins to the latest group. (frontend retarget — slice 2)
-- [ ] At the repo's real scale (47 commits), the default view shows ≤ ~10
-      top-level nodes — no endless scroll. Verified by screenshot. (slice 2)
+- [x] Groups are collapsed by default; clicking a `pr` node expands/collapses its
+      commits inline and the layout reflows. (verified: /tmp/spine-collapsed.png,
+      /tmp/spine-expanded.png)
+- [x] ADR `decision` nodes attach to the PR group (or loose commit) containing
+      their commit; focus pins to the latest group. (boundary edges re-point on
+      collapse — decides reach the group when collapsed, the commit when expanded)
+- [x] At the repo's real scale (47 commits), the default view shows ~12 top-level
+      nodes (7 PR chips + loose + ADRs + focus) — no endless scroll.
 - [x] No-git fallback unchanged; `/api/graph` stays valid.
 
 Docs — enterprise redesign:
