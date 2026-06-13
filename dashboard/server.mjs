@@ -36,7 +36,7 @@ export function createDashboardServer(spineDir = join(process.cwd(), ".spine")) 
     }
     if (req.url === "/api/graph") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(buildGraph(spineDir)));
+      res.end(JSON.stringify(buildGraph(spineDir, process.cwd())));
       return;
     }
     const path = req.url === "/" ? "/index.html" : req.url.split("?")[0];

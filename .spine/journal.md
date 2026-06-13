@@ -17,8 +17,8 @@ nearest-by-date; "dependencies" = `parent` (git) + `implements` (criterion→com
 
 ## Next step
 
-`build` slice 2: rewrite `graph-builder.mjs` (Spine overlay on the commit
-backbone), test-first with an injected git history.
+`build` slice 3: frontend timeline (`public/`) — Cytoscape `preset` vertical
+layout, restyle, panel + legend. Verify live.
 
 ## Build plan (TDD vertical slices)
 
@@ -29,15 +29,11 @@ Design recorded in ADRs [[0001-git-history-as-commit-backbone]],
 1. **`git-reader.mjs`** — ✅ DONE. 5 tests green; verified on the real repo (43
    commits, merge parents, timezones). `readGitHistory(repoDir,{run})` with
    injectable `run`; no-git → `{available:false}`.
-2. **`graph-builder.mjs` rewrite** — RED: given a fake spine + injected git
-   history, assert `commit` nodes, `parent` edges (incl. a merge's two parents),
-   `decides` edge by SHA, `decides` by nearest-date fallback, `supersedes`,
-   `focus` node + `focuses` edge, commit `milestone` annotation from journal
-   History, and no-git Spine-only fallback. Replace the old module-mention tests
-   and extend the fixture (journal History with a SHA; an ADR citing a SHA).
-   GREEN + commit.
-3. **`server.mjs`** — RED: `/api/graph` returns `commit` nodes when served with a
-   git repo cwd (pass `repoDir = process.cwd()`). GREEN + commit.
+2. **`graph-builder.mjs` rewrite + `server.mjs` wiring** — ✅ DONE (merged slices
+   2+3: the model and API are coupled). 9 builder tests + updated server test;
+   full suite 26/26 green. Verified on the real repo: 45 commits, 50 parent
+   edges, 3 ADRs attached, focus pinned, 2 milestones annotated. `server.mjs`
+   passes `repoDir = process.cwd()`.
 4. **Frontend timeline** (`public/`) — Cytoscape `preset`, vertical layout
    (newest top); compute positions from node `time`/`type`; restyle spine + lane
    guides; panel shows commit body / ADR / focus+criteria; update legend. No unit
@@ -48,23 +44,23 @@ Design recorded in ADRs [[0001-git-history-as-commit-backbone]],
 ## Acceptance criteria
 
 Data model (`graph-builder.mjs`):
-- [ ] In a repo with git history, the graph has one `commit` node per commit
+- [x] In a repo with git history, the graph has one `commit` node per commit
       (short SHA, subject, author, date), ordered chronologically.
-- [ ] Each commit links to its parent(s) via a `parent` edge — the git DAG,
+- [x] Each commit links to its parent(s) via a `parent` edge — the git DAG,
       merges included.
-- [ ] Each `.spine/decisions/` ADR is a `decision` node attached to the commit
+- [x] Each `.spine/decisions/` ADR is a `decision` node attached to the commit
       it was decided in (by SHA referenced in Spine, else nearest commit by date).
-- [ ] Journal acceptance-criteria / current-focus items attach to the commit(s)
-      that implemented them via an `implements` edge (by SHA, else by date).
-- [ ] ADR→ADR `supersedes` edges are emitted when an ADR declares it supersedes
+- [x] Current-focus attaches to HEAD via a `focuses` edge; acceptance criteria
+      render in the focus detail (refined per ADR-0002 — no fabricated nodes).
+- [x] ADR→ADR `supersedes` edges are emitted when an ADR declares it supersedes
       another.
-- [ ] With no `.git` (or git unavailable), it degrades to a Spine-only timeline
-      (journal milestones + ADRs) and never crashes.
+- [x] With no `.git` (or git unavailable), it degrades to a Spine-only timeline
+      (decisions + focus) and never crashes.
 
 API:
-- [ ] `/api/graph` returns `{nodes, edges}` where each node has a `type`
-      (`commit`|`decision`|`criterion`|`focus`) and a `time`, and each edge has a
-      `rel` (`parent`|`implements`|`supersedes`).
+- [x] `/api/graph` returns `{nodes, edges}` where each node has a `type`
+      (`commit`|`decision`|`focus`) and a `time`, and each edge has a `rel`
+      (`parent`|`decides`|`supersedes`|`focuses`).
 
 View (home, full redesign, zero new deps):
 - [ ] Commits render along a primary chronological axis (time-ordered),
