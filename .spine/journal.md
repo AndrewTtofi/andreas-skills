@@ -28,7 +28,9 @@ exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-**Ship.** Verify passed — all 15 criteria met with evidence (below).
+**Await merge of PR #14** (manifest-schema hardening). Shipped; CI green
+(`validate` = validate.mjs + `npm test`, 8s); required check satisfied,
+mergeable. Leave the merge to the user.
 
 ## Verification (2026-06-13)
 
@@ -95,6 +97,15 @@ exact schema rules confirmed against the authoritative spec in `design`.
 
 ## History
 
+- 2026-06-13 {tooling, validate, manifest, ci, tests} — **PR #14 (open)**: harden
+  `validate.mjs` against the Claude Code **manifest schema**. Pure
+  `manifest-schema.mjs` (`validateManifest`/`validateMarketplace`/`crossCheck` →
+  `{errors,warnings}`); `validate.mjs` becomes a thin two-tier CLI wrapper (errors
+  fail, warnings inform); both manifests checked (author/owner must be objects,
+  name kebab-case, keywords array, source `./`-prefixed, clean JSON errors). Root
+  `package.json` + CI now runs validate + `node:test` (22/22). First feature run
+  through the full align→design→build→verify→ship gate with CI + branch
+  protection live. [[0014-manifest-schema-validation-pure-module]].
 - 2026-06-13 {skills, align, init, gate, dogfood} — **PR #12 (merged, `4f02c64`)**: the
   **contracting gate**. `align` reworked into an extensive, certainty-gated
   intent interview — 12 interrogation dimensions, an explicit confidence score,
