@@ -19,7 +19,8 @@ rebase repos show loose commits (known limit); zero new deps.
 
 ## Next step
 
-`build` slice 1: PR-grouping in `graph-builder` (DAG reachability), test-first.
+`build` slice 2: frontend collapse/expand — render `pr` nodes collapsed by
+default, click to expand members + reflow, re-point boundary edges to the group.
 
 ## Build plan (TDD vertical slices)
 
@@ -43,19 +44,20 @@ Design in ADRs [[0004-cluster-commits-by-pull-request]],
 ## Acceptance criteria
 
 Graph — PR clustering:
-- [ ] Commits that landed via `Merge pull request #N` are grouped under one
-      collapsible `pr` node labeled `#N · <title>`, showing its commit count.
-- [ ] A PR group's commits = reachable from the merge's 2nd parent but not its
+- [x] Commits that landed via `Merge pull request #N` are grouped under one
+      `pr` node labeled `#N · <title>`, showing its commit count. (real repo: 7
+      groups, titles from merge bodies.)
+- [x] A PR group's commits = reachable from the merge's 2nd parent but not its
       1st (the branch's commits), computed from the DAG.
-- [ ] Commits not under any merged PR render as standalone `commit` nodes on the
-      main spine.
+- [x] Commits not under any merged PR render as standalone `commit` nodes (real
+      repo: 47 grouped, 5 loose).
 - [ ] Groups are collapsed by default; clicking a `pr` node expands/collapses its
-      commits inline and the layout reflows.
+      commits inline and the layout reflows. (frontend — slice 2)
 - [ ] ADR `decision` nodes attach to the PR group (or loose commit) containing
-      their commit; focus pins to the latest group.
+      their commit; focus pins to the latest group. (frontend retarget — slice 2)
 - [ ] At the repo's real scale (47 commits), the default view shows ≤ ~10
-      top-level nodes — no endless scroll. Verified by screenshot.
-- [ ] No-git fallback unchanged; `/api/graph` stays valid.
+      top-level nodes — no endless scroll. Verified by screenshot. (slice 2)
+- [x] No-git fallback unchanged; `/api/graph` stays valid.
 
 Docs — enterprise redesign:
 - [ ] Content is constrained to a readable measure (~720px), centered, with a

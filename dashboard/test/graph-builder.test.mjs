@@ -101,3 +101,56 @@ test("no git → Spine-only timeline (decisions + focus, no commits), never thro
 test("missing spine returns an empty graph", () => {
   assert.deepEqual(buildGraph(readSpine(join(import.meta.dirname, "fixture", "nope"))), { nodes: [], edges: [] });
 });
+
+// --- PR clustering (ADR-0004) ---
+// History (newest first):
+//   D  direct-on-main commit  (loose)        parents [M]
+//   M  Merge pull request #1  (PR group)     parents [m1, b2]
+//   m1 mainline commit        (loose)        parents [m0]
+//   b2 branch work 2          (PR #1)        parents [b1]
+//   b1 branch work 1          (PR #1)        parents [m0]
+//   m0 init                   (loose, base)  parents []
+const sha = (p) => p + "0".repeat(40 - p.length);
+const D = sha("d11"), M = sha("merge1"), M1 = sha("a11"), B2 = sha("b22"), B1 = sha("b11"), M0 = sha("0000");
+const PR_GIT = {
+  available: true,
+  commits: [
+    { sha: D, shortSha: "d11", parents: [M], subject: "direct fix on main", body: "", author: "A", date: "2026-06-13T12:00:00+00:00" },
+    { sha: M, shortSha: "merge1", parents: [M1, B2], subject: "Merge pull request #1 from me/feat", body: "Add the feature", author: "A", date: "2026-06-13T11:00:00+00:00" },
+    { sha: M1, shortSha: "a11", parents: [M0], subject: "earlier mainline", body: "", author: "A", date: "2026-06-11T10:00:00+00:00" },
+    { sha: B2, shortSha: "b22", parents: [B1], subject: "branch work 2", body: "", author: "A", date: "2026-06-12T10:00:00+00:00" },
+    { sha: B1, shortSha: "b11", parents: [M0], subject: "branch work 1", body: "", author: "A", date: "2026-06-12T09:00:00+00:00" },
+    { sha: M0, shortSha: "0000", parents: [], subject: "init", body: "", author: "A", date: "2026-06-09T10:00:00+00:00" },
+  ],
+};
+const MINI_SPINE = { exists: true, context: "", conventions: "", journal: "# J\n## Current focus\nx\n", decisions: [] };
+const groupOf = (g, commitSha) => (g.nodes.find((n) => n.id === `commit:${commitSha}`) || {}).group;
+
+test("a Merge-pull-request commit becomes a pr group node", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  const pr = g.nodes.find((n) => n.type === "pr");
+  assert.ok(pr, "pr node exists");
+  assert.equal(pr.id, "pr:1");
+  assert.equal(pr.number, 1);
+  assert.match(pr.label, /#1 · Add the feature/);
+  assert.equal(pr.count, 2); // the two branch commits
+});
+
+test("branch commits + the merge are tagged with the pr group", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  assert.equal(groupOf(g, B1), "pr:1");
+  assert.equal(groupOf(g, B2), "pr:1");
+  assert.equal(groupOf(g, M), "pr:1"); // the merge hides into its group
+});
+
+test("commits not in any PR are loose (no group)", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  assert.equal(groupOf(g, D), undefined); // direct-on-main
+  assert.equal(groupOf(g, M1), undefined); // mainline
+  assert.equal(groupOf(g, M0), undefined); // merge base / root
+});
+
+test("history with no PR merges produces no pr nodes (backstop)", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: GIT }); // GIT has no merge-PR subjects
+  assert.ok(!g.nodes.some((n) => n.type === "pr"));
+});

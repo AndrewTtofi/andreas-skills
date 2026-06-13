@@ -34,9 +34,11 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     const commits = git.commits; // newest-first
     const shaSet = new Set(commits.map((c) => c.sha));
     const milestones = extractHistoryMilestones(s.journal);
+    const { prNodes, groupOf } = clusterByPullRequest(commits);
 
     for (const c of commits) {
       const milestone = matchMilestone(c, milestones);
+      const group = groupOf.get(c.sha);
       nodes.push({
         id: `commit:${c.sha}`,
         type: "commit",
@@ -46,11 +48,13 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
         author: c.author,
         body: c.body,
         ...(milestone ? { milestone } : {}),
+        ...(group ? { group } : {}),
       });
       for (const p of c.parents) {
         if (shaSet.has(p)) edges.push({ source: `commit:${c.sha}`, target: `commit:${p}`, rel: "parent" });
       }
     }
+    for (const pr of prNodes) nodes.push(pr);
 
     for (const d of decisions) {
       nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date });
@@ -79,6 +83,60 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
   }
 
   return { nodes, edges };
+}
+
+// Cluster commits by the pull request they landed in. A `Merge pull request #N`
+// commit becomes a `pr` group node; its members are the merge plus the branch
+// commits (reachable from the merge's 2nd parent, not its 1st). See
+// .spine/decisions/0004. Returns { prNodes, groupOf: Map<sha, "pr:N"> }.
+function clusterByPullRequest(commits) {
+  const bySha = new Map(commits.map((c) => [c.sha, c]));
+  const reachable = (start) => {
+    const seen = new Set();
+    const stack = [start];
+    while (stack.length) {
+      const s = stack.pop();
+      if (!s || seen.has(s) || !bySha.has(s)) continue;
+      seen.add(s);
+      for (const p of bySha.get(s).parents) stack.push(p);
+    }
+    return seen;
+  };
+
+  const prNodes = [];
+  const groupOf = new Map();
+  for (const c of commits) {
+    const m = c.subject.match(/^Merge pull request #(\d+)/);
+    if (!m || c.parents.length < 2) continue;
+    const number = Number(m[1]);
+    const [mainParent, branchTip] = c.parents;
+    const base = reachable(mainParent); // everything already on mainline
+
+    // Walk the branch: reachable from branchTip but not from mainParent.
+    const branch = [];
+    const seen = new Set();
+    const stack = [branchTip];
+    while (stack.length) {
+      const s = stack.pop();
+      if (!s || seen.has(s) || base.has(s) || !bySha.has(s)) continue;
+      seen.add(s);
+      if (!groupOf.has(s)) branch.push(s);
+      for (const p of bySha.get(s).parents) stack.push(p);
+    }
+
+    const id = `pr:${number}`;
+    groupOf.set(c.sha, id); // the merge hides into its group
+    for (const s of branch) groupOf.set(s, id);
+    prNodes.push({ id, type: "pr", label: `#${number} · ${prTitle(c)}`, number, count: branch.length, time: c.date });
+  }
+  return { prNodes, groupOf };
+}
+
+function prTitle(mergeCommit) {
+  const body = (mergeCommit.body || "").trim();
+  if (body) return body.split("\n")[0].trim();
+  const m = mergeCommit.subject.match(/from \S+?\/(\S+)/);
+  return m ? m[1] : `pull request`;
 }
 
 const SHA_RE = /\b([0-9a-f]{7,40})\b/g;
