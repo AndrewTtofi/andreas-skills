@@ -67,6 +67,27 @@ export function validateManifest(plugin) {
   return { errors, warnings };
 }
 
+// Cross-manifest consistency. A version mismatch isn't install-blocking
+// (plugin.json wins) but a stale marketplace entry masks the real version —
+// surface it as a warning.
+export function crossCheck(plugin, marketplace) {
+  const errors = [];
+  const warnings = [];
+  const entries = Array.isArray(marketplace?.plugins) ? marketplace.plugins : [];
+  const entry = entries.find((e) => isPlainObject(e) && e.name === plugin?.name);
+  if (
+    entry &&
+    isNonEmptyString(plugin?.version) &&
+    isNonEmptyString(entry.version) &&
+    plugin.version !== entry.version
+  ) {
+    warnings.push(
+      `version mismatch: plugin.json "${plugin.version}" != marketplace.json plugins[].version "${entry.version}" (plugin.json wins; bump the marketplace entry)`,
+    );
+  }
+  return { errors, warnings };
+}
+
 export function validateMarketplace(marketplace) {
   const errors = [];
   const warnings = [];

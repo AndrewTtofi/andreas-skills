@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateManifest, validateMarketplace } from "./manifest-schema.mjs";
+import {
+  validateManifest,
+  validateMarketplace,
+  crossCheck,
+} from "./manifest-schema.mjs";
 
 // Helpers: a valid base, then targeted mutations. Hermetic — plain objects.
 const validPlugin = () => ({
@@ -185,4 +189,44 @@ test("plugins[] entry missing license/keywords → warnings, not errors", () => 
   assert.ok(hasWarn(res, "license"));
   assert.ok(hasWarn(res, "keywords"));
   assert.ok(!hasErr(res, "license"));
+});
+
+// ── crossCheck (plugin.json ↔ marketplace.json) ─────────────────────────────
+
+test("crossCheck warns on version mismatch (never errors)", () => {
+  const res = crossCheck(
+    { name: "spine", version: "1.1.0" },
+    { plugins: [{ name: "spine", source: "./", version: "1.0.0" }] },
+  );
+  assert.ok(hasWarn(res, "version"));
+  assert.deepEqual(res.errors, []);
+});
+
+test("crossCheck silent when versions match", () => {
+  const res = crossCheck(
+    { name: "spine", version: "1.1.0" },
+    { plugins: [{ name: "spine", source: "./", version: "1.1.0" }] },
+  );
+  assert.ok(!hasWarn(res, "version"));
+});
+
+test("crossCheck silent when no matching entry or a version is absent", () => {
+  assert.ok(
+    !hasWarn(
+      crossCheck(
+        { name: "spine", version: "1.1.0" },
+        { plugins: [{ name: "other", version: "2.0.0" }] },
+      ),
+      "version",
+    ),
+  );
+  assert.ok(
+    !hasWarn(
+      crossCheck(
+        { name: "spine" },
+        { plugins: [{ name: "spine", version: "1.1.0" }] },
+      ),
+      "version",
+    ),
+  );
 });

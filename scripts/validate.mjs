@@ -5,7 +5,11 @@
 // report: errors fail the build (exit 1); warnings inform.
 import { readFileSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
-import { validateManifest, validateMarketplace } from "./manifest-schema.mjs";
+import {
+  validateManifest,
+  validateMarketplace,
+  crossCheck,
+} from "./manifest-schema.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const errors = [];
@@ -46,8 +50,7 @@ const marketplace = readJson(
   "marketplace.json",
 );
 if (marketplace) collect(validateMarketplace(marketplace));
-
-// Cross-manifest consistency (warnings) is added in build slice 4.
+if (plugin && marketplace) collect(crossCheck(plugin, marketplace));
 
 // ── Skills: each listed skill exists, has valid frontmatter (name == folder) ──
 for (const rel of plugin?.skills ?? []) {
