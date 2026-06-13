@@ -147,12 +147,13 @@ function renderGraph() {
   cy = cytoscape({
     container: $("#cy"),
     elements: computeElements(),
+    layout: { name: "preset" },
     minZoom: 0.15,
     maxZoom: 3,
     wheelSensitivity: 0.3,
     style: graphStyle(),
   });
-  runLayout();
+  layoutBrain();
   cy.on("tap", 'node[type="pr"], node[type="segment"]', (evt) => toggleGroup(evt.target.id()));
   cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"], node[type="module"], node[type="concept"]', (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
@@ -165,27 +166,74 @@ function renderGraph() {
   cy.on("mouseout", "node", clearHighlight);
 }
 
-function runLayout(randomize = true) {
-  const opts = {
-    name: "fcose",
-    quality: "default",
-    animate: true,
-    animationDuration: 600,
-    randomize,
-    fit: true,
-    padding: 60,
-    nodeSeparation: 130,
-    idealEdgeLength: 95,
-    nodeRepulsion: 7000,
-    gravity: 0.22,
-    gravityRange: 3.2,
-    numIter: 1800,
+// Deterministic, time-sequenced layout (.spine/decisions/0012): clusters run down
+// a chronological spine (newest at top) — the visible sequence — while module
+// hubs, ADRs, and concepts are placed deterministically around their connections.
+// Same input → same positions every reload (no scrambling).
+const ROW = 104;
+function layoutBrain() {
+  const pos = {};
+  const hash = (s) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
   };
-  try {
-    cy.layout(opts).run();
-  } catch {
-    cy.layout({ name: "cose", animate: true, fit: true, padding: 60, nodeRepulsion: 12000, idealEdgeLength: 95 }).run();
+  const centroid = (ids) => {
+    const ps = ids.map((id) => pos[id]).filter(Boolean);
+    if (!ps.length) return null;
+    return { x: ps.reduce((a, p) => a + p.x, 0) / ps.length, y: ps.reduce((a, p) => a + p.y, 0) / ps.length };
+  };
+
+  // 1. clusters → a gently meandering chronological spine: y = time (the
+  //    sequence), x waves (organic, brain-like rather than a rigid line).
+  const clusters = graph.nodes.filter(isGroup).slice().sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0));
+  clusters.forEach((n, i) => (pos[n.id] = { x: Math.sin(i * 0.7) * 95, y: i * ROW }));
+  const fixed = new Set(clusters.map((n) => n.id));
+  const midY = (clusters.length * ROW) / 2;
+
+  // 2. satellites → scattered around the centroid of their connections at a
+  //    deterministic angle/radius (a web), biased to a side to reduce clutter.
+  const scatter = (n, ids, baseDeg) => {
+    const c = centroid(ids) || { x: 0, y: midY };
+    const j = hash(n.id);
+    const a = ((baseDeg + (j % 120) - 60) * Math.PI) / 180;
+    const r = 240 + (j % 210);
+    pos[n.id] = { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
+  };
+  const touchOf = {};
+  graph.edges.filter((e) => e.rel === "touches").forEach((e) => (touchOf[e.target] ??= []).push(e.source));
+  graph.nodes.filter((n) => n.type === "module").forEach((n) => scatter(n, touchOf[n.id] || [], 0)); // right
+  const decideOf = {};
+  graph.edges.filter((e) => e.rel === "decides").forEach((e) => {
+    const c = nodeById(e.target);
+    if (c && c.group) (decideOf[e.source] ??= []).push(c.group);
+  });
+  graph.nodes.filter((n) => n.type === "decision").forEach((n) => scatter(n, decideOf[n.id] || [], 180)); // left
+  const mentionOf = {};
+  graph.edges.filter((e) => e.rel === "mentions").forEach((e) => (mentionOf[e.source] ??= []).push(e.target));
+  graph.nodes.filter((n) => n.type === "concept").forEach((n) => scatter(n, mentionOf[n.id] || [], 180));
+
+  // 3. de-overlap: push colliding nodes apart; clusters stay fixed (spine intact).
+  const ids = Object.keys(pos);
+  const MIN = 138;
+  for (let pass = 0; pass < 70; pass++) {
+    for (let i = 0; i < ids.length; i++) {
+      for (let k = i + 1; k < ids.length; k++) {
+        const a = pos[ids[i]], b = pos[ids[k]];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let d = Math.hypot(dx, dy);
+        if (d < 0.5) { dx = (hash(ids[i]) % 7) - 3 || 1; dy = (hash(ids[k]) % 7) - 3; d = Math.hypot(dx, dy) || 1; }
+        if (d < MIN) {
+          const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
+          if (!fixed.has(ids[i])) (a.x += ux * push), (a.y += uy * push);
+          if (!fixed.has(ids[k])) (b.x -= ux * push), (b.y -= uy * push);
+        }
+      }
+    }
   }
+
+  cy.nodes().forEach((node) => pos[node.id()] && node.position(pos[node.id()]));
+  cy.fit(undefined, 60);
 }
 
 // Expand/collapse a cluster WITHOUT reshuffling the rest of the brain. Existing
@@ -404,9 +452,12 @@ function runSearch(raw) {
     }
   }
   if (changed) {
+    const prev = {};
+    cy.nodes().forEach((n) => (prev[n.id()] = { ...n.position() }));
     cy.elements().remove();
     cy.add(computeElements());
-    runLayout(false);
+    cy.nodes().forEach((n) => prev[n.id()] && n.position(prev[n.id()]));
+    for (const id of expanded) placeCommitsRing(id, prev[id] || { x: 0, y: 0 });
   }
   const ids = new Set(matched.map((n) => resolve(n.id)));
   const hits = cy.nodes().filter((n) => ids.has(n.id()));

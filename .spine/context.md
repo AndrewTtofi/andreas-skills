@@ -43,9 +43,12 @@ coding agent to work like a senior engineer and not lose the plot.
     `public/`.
   - `public/` — frontend (vanilla JS + Cytoscape + fcose via CDN), **Stripe-grade
     light theme** ([[0008-stripe-grade-light-design-system]]). Graph mode is a
-    **force-directed brain** navigated by fit/zoom/search, clusters collapse to
-    commits, with a **filter bar** (time range + label chips) and a **WIP anchor**
-    ([[0009-knowledge-graph-brain-with-hubs]], [[0011-filter-bar-and-wip-anchor]]);
+    knowledge-graph **brain** with a **deterministic sequenced layout** — clusters
+    on a meandering chronological spine, hubs/ADRs scattered around their
+    connections ([[0009-knowledge-graph-brain-with-hubs]],
+    [[0012-deterministic-sequenced-organic-layout]]) — navigated by fit/zoom/search,
+    clusters collapse to commits, with a **filter bar** (time range + label chips)
+    and a **WIP anchor** ([[0011-filter-bar-and-wip-anchor]]);
     Docs mode is a three-pane layout ([[0005-docs-three-pane-with-generated-toc]]).
 - `docs/` — `plans/`, `specs/`, and `launch/` (unpublished launch material).
 - `.spine/` — this memory store: `context.md`, `conventions.md`, `journal.md`,
