@@ -19,8 +19,25 @@ rebase repos show loose commits (known limit); zero new deps.
 
 ## Next step
 
-`verify`: `cd dashboard && node --test` + `node scripts/validate.mjs` green;
-confirm every criterion against evidence. Then `ship`.
+Verified — ready to `ship` (PR `dashboard-approachability` → `main`).
+
+## Verification (2026-06-13, iteration 2)
+
+All 15 acceptance criteria met with evidence.
+
+- Tests: `cd dashboard && node --test` → `# tests 30 # pass 30 # fail 0`
+  (4 new PR-clustering tests in graph-builder).
+- Validator: `node scripts/validate.mjs` → `All 9 skills valid.`
+- Graph (live): default view = 7 PR chips + loose commits + ADRs + focus (~12
+  top-level, no endless scroll) — /tmp/spine-collapsed.png; expand re-flows with
+  member commits + re-pointed edges — /tmp/spine-expanded.png. No console errors.
+- Docs (live): three-pane (sectioned sidebar + active + ADR-count badge,
+  ~720px content + header, generated TOC) — /tmp/spine-docs2.png,
+  /tmp/spine-docs-decisions.png. No console errors.
+- Diff: +413/−154 across 5 files; no dead code; zero new deps.
+
+Caveat (unchanged): collapse/expand + panel are verified via the page's own
+functions + screenshots, not a headless canvas click (Cytoscape `<canvas>`).
 
 ## Build plan (TDD vertical slices)
 
