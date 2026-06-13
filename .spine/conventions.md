@@ -33,3 +33,9 @@ generic. The repo root has no `package.json`; only `dashboard/` is an npm packag
 - **Run `node scripts/validate.mjs` before every commit. It must pass.**
 - Skill prose reads like a senior engineer wrote it: terse, durable principles,
   no process ceremony. Match the existing skills' voice.
+- **Shell-out code takes an injectable runner.** Code that shells to an external
+  command (e.g. `git-reader.mjs`'s `git log`) accepts an optional `run` function
+  defaulting to the real `execFileSync`, so tests feed canned output and stay
+  hermetic — no real repo/process needed. See [[0001-git-history-as-commit-backbone]].
+- Dashboard graph data stays presentation-agnostic: `graph-builder` returns
+  `{nodes, edges}` with `type`/`time`; the frontend computes layout coordinates.
