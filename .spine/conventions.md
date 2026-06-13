@@ -38,4 +38,10 @@ generic. The repo root has no `package.json`; only `dashboard/` is an npm packag
   defaulting to the real `execFileSync`, so tests feed canned output and stay
   hermetic — no real repo/process needed. See [[0001-git-history-as-commit-backbone]].
 - Dashboard graph data stays presentation-agnostic: `graph-builder` returns
-  `{nodes, edges}` with `type`/`time`; the frontend computes layout coordinates.
+  `{nodes, edges}` with a `type`; the frontend (Cytoscape fcose) computes layout.
+- **Before claiming a push lands in a PR, verify the PR is still open**
+  (`gh pr view <n> --json state`). A merged PR's branch keeps accepting commits,
+  but they go nowhere — they orphan on the branch (not in main, not in a PR).
+- The dashboard's design system is **Stripe-grade light** (white, navy ink, one
+  blurple accent `#635bff`, Inter); new UI must read on white. See
+  [[0008-stripe-grade-light-design-system]].

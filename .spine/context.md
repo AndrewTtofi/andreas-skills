@@ -28,22 +28,23 @@ coding agent to work like a senior engineer and not lose the plot.
 - `dashboard/` — a separate zero-dep npm package, `spine-dashboard`: a read-only
   local web view of any repo's `.spine/`. Backend modules (Node ESM):
   - `spine-reader.mjs` — pure read of `.spine/` → structured data.
-  - `git-reader.mjs` — pure read of git history via `git log` (shelled,
-    injectable `run` for tests); the commit backbone. See
-    [[0001-git-history-as-commit-backbone]].
-  - `graph-builder.mjs` — overlays the Spine onto the commit timeline →
-    `{nodes, edges}`, and clusters commits into `pr` group nodes by the pull
-    request they landed in (DAG reachability). See
-    [[0002-spine-overlays-the-commit-timeline]],
-    [[0004-cluster-commits-by-pull-request]].
+  - `git-reader.mjs` — pure read of git history via `git log --name-only`
+    (shelled, injectable `run`); each commit carries its `files[]`. The commit
+    backbone. See [[0001-git-history-as-commit-backbone]].
+  - `graph-builder.mjs` — builds a **knowledge graph** `{nodes, edges}`: clusters
+    every commit by PR/segment ([[0004-cluster-commits-by-pull-request]],
+    [[0006-cluster-every-commit-into-segments]]), overlays Spine meaning
+    ([[0002-spine-overlays-the-commit-timeline]]), and adds non-sequential
+    **module hubs** + **concept** nodes with `touches`/`references`/`mentions`
+    edges ([[0009-knowledge-graph-brain-with-hubs]]).
   - `markdown.mjs` — markdown → HTML.
   - `server.mjs` — composes the above; serves `/api/spine`, `/api/graph`, static
     `public/`.
-  - `public/` — frontend (vanilla JS + Cytoscape via CDN). Graph mode renders a
-    vertical timeline via Cytoscape `preset` layout
-    ([[0003-vertical-timeline-via-cytoscape-preset]]) with PR groups collapsed by
-    default and expandable to commits; Docs mode is a three-pane layout (sectioned
-    sidebar · constrained content · generated TOC),
+  - `public/` — frontend (vanilla JS + Cytoscape + fcose via CDN), **Stripe-grade
+    light theme** ([[0008-stripe-grade-light-design-system]]). Graph mode is a
+    **force-directed brain** navigated by fit/zoom/search, clusters collapse to
+    commits ([[0009-knowledge-graph-brain-with-hubs]]); Docs mode is a three-pane
+    layout (sectioned sidebar · constrained content · generated TOC),
     [[0005-docs-three-pane-with-generated-toc]].
 - `docs/` — `plans/`, `specs/`, and `launch/` (unpublished launch material).
 - `.spine/` — this memory store: `context.md`, `conventions.md`, `journal.md`,
@@ -69,7 +70,16 @@ dashboard graph's primary, ordered, dependency-bearing spine.
 **Overlay**: Spine meaning (ADRs, focus) attached onto commits in the graph —
 `decision` nodes, the `focus` node, and milestone annotations on commits.
 
-**PR group**: a `pr` node clustering the commits that landed in one pull request
-(the merge + its branch commits). The default unit shown in the graph.
+**Cluster**: a `pr` node (commits of one pull request) or a `segment` node (a run
+of non-merge mainline commits — newest = "Current branch", older = "Direct to
+main"). Every commit belongs to exactly one cluster.
 
-**Loose commit**: a mainline commit not part of any merged PR; rendered standalone.
+**Module hub**: a `module` node for a code path touched by ≥2 clusters — the
+non-sequential connector in the brain (clusters link to it via `touches`).
+Meta/doc paths (README, docs, manifests) are excluded as noise.
+
+**Concept node**: a `concept` node for a shared-language term named by ≥2 ADRs,
+linked via `mentions` — the conceptual layer of the brain.
+
+**The brain**: the force-directed knowledge graph the dashboard renders — clusters
++ ADRs + module hubs + concepts, with sequential and non-sequential edges.
