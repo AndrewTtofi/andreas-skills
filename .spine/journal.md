@@ -54,16 +54,15 @@ Graph cohesion + completeness (still Cytoscape nodes+links):
       0 loose). PR merges → PR clusters; non-merge runs → segment clusters.
 - [x] In-flight work clusters as "Current branch" (real repo: 8 commits) — PR #8
       now clusters.
-- [ ] Decisions nest into their cluster: collapsed shows a decision count;
-      expanding reveals ADR nodes adjacent to the cluster (no far-right lane).
-- [ ] Focus is integrated at the top of the spine (linked into the column), not
-      floating in a side margin.
-- [ ] Layout stays a single tidy vertical column.
+- [x] Decisions nest into their cluster: collapsed cluster shows a ◆count badge;
+      expanding reveals ADR cards in the cluster's block (no far-right lane).
+- [x] Focus integrated at the top of the spine (star linked into the column).
+- [x] Single tidy vertical column. (/tmp/spine-v3-collapsed.png, -pr7.png)
 
 Palette (refined dark, professional):
-- [ ] Charcoal bg (#0d0f14), slate text, hairline borders, a single indigo accent
-      (#6e7bf2). No neon (cyan/amber/violet/mint), no starfield.
-- [ ] Applied consistently across graph, topbar, and docs.
+- [x] Charcoal bg (#0d0f14), slate text, hairline borders, one indigo accent
+      (#6e7bf2). Neon + starfield removed.
+- [x] Applied across graph, topbar, and docs (named CSS vars repointed).
 
 Cross-cutting:
 - [ ] Zero new deps; graph-builder tests for segment + in-flight clustering;

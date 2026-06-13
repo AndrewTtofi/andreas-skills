@@ -1,11 +1,16 @@
 const $ = (s) => document.querySelector(s);
 
-const TYPE = {
-  pr: { color: "#cdd8f0", label: "pull requests" },
-  commit: { color: "#7fd4ff", label: "commits" },
-  decision: { color: "#ffce6a", label: "decisions" },
-  focus: { color: "#9af5c4", label: "current focus" },
-};
+// Refined-dark palette (.spine/decisions/0007): slate ramp + one indigo accent.
+const ACCENT = "#6e7bf2";
+const DOT = "#aab2c5";
+const SLATE = "#c9cfdb";
+const LINE = "rgba(170,178,197,0.22)";
+const LEGEND = [
+  { c: ACCENT, label: "clusters" },
+  { c: DOT, label: "commits" },
+  { c: SLATE, label: "decisions" },
+  { c: ACCENT, label: "current focus" },
+];
 const DOCS = [
   ["architecture", "Architecture"],
   ["conventions", "Conventions"],
@@ -18,22 +23,22 @@ const DOC_SECTIONS = [
 ];
 const docLabel = (id) => (DOCS.find((d) => d[0] === id) || [id, id])[1];
 
-// Timeline geometry (model coordinates). The spine (PR groups + loose commits)
-// runs down x=0, newest at top; expanded commits indent right; decisions sit in
-// a far-right lane; focus floats up-left.
-const ROW = 96; // spine row height
-const MEMROW = 60; // expanded member row height
-const MEM_X = 165; // indent for expanded commits
-const DEC_X = 410; // decision lane
+// Timeline geometry. The spine (clusters) runs down x=0, newest at top; an
+// expanded cluster reveals its commits (indented) and its decisions (further
+// right) within its own block. Focus sits atop the spine.
+const ROW = 92;
+const MEMROW = 56;
+const DECROW = 88; // decision cards are taller than commit dots
+const MEM_X = 175;
+const DEC_X = 470;
 
 let spine = null;
 let graph = null;
 let cy = null;
-let expanded = new Set(); // pr ids currently expanded (default: all collapsed)
+let expanded = new Set(); // cluster ids currently expanded (default: all collapsed)
 let docActive = "architecture";
 
 async function boot() {
-  makeStars();
   try {
     [spine, graph] = await Promise.all([
       fetch("/api/spine").then((r) => r.json()),
@@ -50,6 +55,7 @@ async function boot() {
     $("#cy").innerHTML = `<div class="floatmsg"><div class="kicker">no spine</div><h1>Nothing recorded here yet</h1><p>Run <code>init</code> to create a <code>.spine/</code> store, then refresh.</p></div>`;
     return;
   }
+  indexDecisions();
   renderGraph();
   renderLegend();
   renderDocsNav();
@@ -71,78 +77,88 @@ function switchMode(m) {
   if (m === "docs") renderDoc(docActive);
 }
 
-/* ---------- graph: PR-clustered timeline with collapse/expand ---------- */
+/* ---------- graph: clustered timeline with collapse/expand ---------- */
 
 const nodeById = (id) => graph.nodes.find((n) => n.id === id);
-
-// A commit in a collapsed group resolves to its group node; everything else is itself.
-function resolve(id) {
-  const n = nodeById(id);
-  if (n && n.type === "commit" && n.group && !expanded.has(n.group)) return n.group;
-  return id;
-}
-function isVisible(n) {
-  if (n.type === "commit") return !n.group || expanded.has(n.group);
-  return true; // pr, decision, focus
-}
-
+const isGroup = (n) => n && (n.type === "pr" || n.type === "segment");
 const byTimeDesc = (a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0);
 
-// Position visible nodes as a vertical timeline for the current collapse state.
+// Map each decision to the cluster of the commit it decides (so it nests there).
+let decisionClusterOf = {};
+let clusterDecisionCount = {};
+function indexDecisions() {
+  decisionClusterOf = {};
+  clusterDecisionCount = {};
+  const target = {};
+  graph.edges.filter((e) => e.rel === "decides").forEach((e) => (target[e.source] = e.target));
+  for (const d of graph.nodes.filter((n) => n.type === "decision")) {
+    const c = nodeById(target[d.id]);
+    const cl = c && c.group ? c.group : null;
+    decisionClusterOf[d.id] = cl;
+    if (cl) clusterDecisionCount[cl] = (clusterDecisionCount[cl] || 0) + 1;
+  }
+}
+
+function isVisible(n) {
+  if (n.type === "commit") return !n.group || expanded.has(n.group);
+  if (n.type === "decision") {
+    const cl = decisionClusterOf[n.id];
+    return !cl || expanded.has(cl);
+  }
+  return true; // clusters, focus
+}
+// A commit/decision in a collapsed cluster resolves to the cluster node.
+function resolve(id) {
+  const n = nodeById(id);
+  if (!n) return id;
+  if (n.type === "commit" && n.group && !expanded.has(n.group)) return n.group;
+  if (n.type === "decision") {
+    const cl = decisionClusterOf[id];
+    if (cl && !expanded.has(cl)) return cl;
+  }
+  return id;
+}
+
 function layoutTimeline(visible) {
   const pos = {};
-  const yOf = {};
-  const spineItems = visible
-    .filter((n) => n.type === "pr" || (n.type === "commit" && !n.group))
-    .sort(byTimeDesc);
+  const focus = visible.find((n) => n.type === "focus");
+  if (focus) pos[focus.id] = { x: 0, y: -ROW * 1.15 };
 
+  const spineItems = visible.filter(isGroup).sort(byTimeDesc);
   let y = 0;
   for (const item of spineItems) {
     pos[item.id] = { x: 0, y };
-    yOf[item.id] = y;
     y += ROW;
-    if (item.type === "pr" && expanded.has(item.id)) {
+    if (expanded.has(item.id)) {
+      const top = y;
       const members = visible.filter((n) => n.type === "commit" && n.group === item.id).sort(byTimeDesc);
       for (const mc of members) {
         pos[mc.id] = { x: MEM_X, y };
-        yOf[mc.id] = y;
         y += MEMROW;
       }
-      y += ROW * 0.25;
+      let dy = top;
+      for (const d of visible.filter((n) => n.type === "decision" && decisionClusterOf[n.id] === item.id)) {
+        pos[d.id] = { x: DEC_X, y: dy };
+        dy += DECROW;
+      }
+      y = Math.max(y, dy) + ROW * 0.3;
     }
   }
-
-  // decisions → right lane, near the y of their (resolved) target
-  const decideTarget = {};
-  graph.edges.filter((e) => e.rel === "decides").forEach((e) => (decideTarget[e.source] = resolve(e.target)));
-  const stackAt = {};
-  for (const n of visible.filter((n) => n.type === "decision")) {
-    const tgt = decideTarget[n.id];
-    const baseY = tgt != null && yOf[tgt] != null ? yOf[tgt] : 0;
-    const k = stackAt[baseY] || 0;
-    pos[n.id] = { x: DEC_X, y: baseY + k * MEMROW };
-    stackAt[baseY] = k + 1;
-  }
-
-  const focus = visible.find((n) => n.type === "focus");
-  if (focus) pos[focus.id] = { x: -210, y: -ROW * 1.1 };
   return pos;
 }
 
 function nodeData(n) {
-  if (n.type === "pr") {
+  if (isGroup(n)) {
     const open = expanded.has(n.id);
-    return { id: n.id, type: "pr", label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}` };
+    const dec = clusterDecisionCount[n.id] ? `   ◆${clusterDecisionCount[n.id]}` : "";
+    return { id: n.id, type: n.type, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}${dec}` };
   }
   return { id: n.id, type: n.type, label: n.label, milestone: n.milestone ? 1 : 0 };
 }
 
-// Build cytoscape elements for the current collapse state, re-pointing any edge
-// that crosses into a collapsed group to the group node (and dropping internal ones).
 function computeElements() {
   const visible = graph.nodes.filter(isVisible);
   const pos = layoutTimeline(visible);
-
   const seen = new Set();
   const edges = [];
   for (const e of graph.edges) {
@@ -154,11 +170,7 @@ function computeElements() {
     seen.add(key);
     edges.push({ data: { id: `e${edges.length}`, source: s, target: t, rel: e.rel } });
   }
-
-  return [
-    ...visible.map((n) => ({ data: nodeData(n), position: pos[n.id] || { x: 0, y: 0 } })),
-    ...edges,
-  ];
+  return [...visible.map((n) => ({ data: nodeData(n), position: pos[n.id] || { x: 0, y: 0 } })), ...edges];
 }
 
 function renderGraph() {
@@ -171,9 +183,8 @@ function renderGraph() {
     wheelSensitivity: 0.3,
     style: graphStyle(),
   });
-
   focusTop();
-  cy.on("tap", 'node[type="pr"]', (evt) => togglePr(evt.target.id()));
+  cy.on("tap", 'node[type="pr"], node[type="segment"]', (evt) => toggleGroup(evt.target.id()));
   cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"]', (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
     if (evt.target === cy) closePanel();
@@ -182,7 +193,7 @@ function renderGraph() {
   cy.on("mouseout", "node", clearHighlight);
 }
 
-function togglePr(id) {
+function toggleGroup(id) {
   expanded.has(id) ? expanded.delete(id) : expanded.add(id);
   const pan = cy.pan();
   const zoom = cy.zoom();
@@ -193,10 +204,9 @@ function togglePr(id) {
   cy.zoom(zoom);
 }
 
-// Park the viewport at the top of the timeline (newest), readable at 1:1.
 function focusTop() {
   cy.zoom(1);
-  cy.pan({ x: cy.width() / 2, y: ROW * 1.6 });
+  cy.pan({ x: cy.width() / 2, y: ROW * 1.8 });
 }
 
 function graphStyle() {
@@ -205,29 +215,29 @@ function graphStyle() {
       selector: "node",
       style: {
         label: "data(label)",
-        color: "#c9d4ec",
+        color: SLATE,
         "font-family": "IBM Plex Sans, system-ui, sans-serif",
         "font-size": 12,
-        "text-outline-color": "#05060a",
+        "text-outline-color": "#0d0f14",
         "text-outline-width": 2,
         "min-zoomed-font-size": 8,
       },
     },
-    // PR group: a chip on the spine, label inside, click to expand
+    // clusters (PR + segment): accent-outlined chips on the spine
     {
-      selector: 'node[type="pr"]',
+      selector: 'node[type="pr"], node[type="segment"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(205,216,240,0.10)",
+        "background-color": "rgba(110,123,242,0.10)",
         "border-width": 1.5,
-        "border-color": TYPE.pr.color,
-        color: "#e7ecf7",
+        "border-color": ACCENT,
+        color: "#e6e8ee",
         width: "label",
         height: "label",
         padding: 11,
         "text-valign": "center",
         "text-halign": "center",
-        "text-max-width": 320,
+        "text-max-width": 330,
         "text-wrap": "ellipsis",
         "font-weight": 600,
       },
@@ -235,36 +245,37 @@ function graphStyle() {
     {
       selector: 'node[type="commit"]',
       style: {
-        width: 11,
-        height: 11,
+        width: 10,
+        height: 10,
         shape: "ellipse",
-        "background-color": TYPE.commit.color,
+        "background-color": DOT,
         "text-valign": "center",
         "text-halign": "right",
         "text-margin-x": 9,
-        "text-max-width": 240,
+        "text-max-width": 250,
         "text-wrap": "ellipsis",
+        color: "#9aa0ad",
         "font-size": 11,
       },
     },
     {
       selector: 'node[type="commit"][milestone = 1]',
-      style: { width: 16, height: 16, "border-width": 3, "border-color": TYPE.decision.color, "border-opacity": 0.7 },
+      style: { width: 14, height: 14, "border-width": 3, "border-color": ACCENT, "border-opacity": 0.8, color: SLATE },
     },
     {
       selector: 'node[type="decision"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(255,206,106,0.14)",
-        "border-width": 1.5,
-        "border-color": TYPE.decision.color,
-        color: TYPE.decision.color,
+        "background-color": "rgba(201,207,219,0.05)",
+        "border-width": 1,
+        "border-color": LINE,
+        color: SLATE,
         width: "label",
         height: "label",
         padding: 9,
         "text-valign": "center",
         "text-halign": "center",
-        "text-max-width": 200,
+        "text-max-width": 210,
         "text-wrap": "wrap",
         "font-size": 11,
       },
@@ -273,25 +284,25 @@ function graphStyle() {
       selector: 'node[type="focus"]',
       style: {
         shape: "star",
-        width: 28,
-        height: 28,
-        "background-color": TYPE.focus.color,
+        width: 26,
+        height: 26,
+        "background-color": ACCENT,
         "text-valign": "center",
-        "text-halign": "left",
-        "text-margin-x": -12,
-        color: TYPE.focus.color,
+        "text-halign": "right",
+        "text-margin-x": 10,
+        color: "#aab4f6",
         "font-weight": 600,
       },
     },
-    { selector: "edge", style: { "curve-style": "bezier", width: 1.4, opacity: 0.55, "line-color": "#4a5878" } },
-    { selector: 'edge[rel="parent"]', style: { "line-color": "rgba(127,212,255,0.55)", width: 2.2, opacity: 0.8 } },
-    { selector: 'edge[rel="decides"]', style: { "line-color": TYPE.decision.color, "line-style": "dashed", opacity: 0.55 } },
-    { selector: 'edge[rel="supersedes"]', style: { "line-color": "#c8a8ff", "line-style": "dotted", width: 1.8, opacity: 0.8 } },
-    { selector: 'edge[rel="focuses"]', style: { "line-color": TYPE.focus.color, "line-style": "dashed", opacity: 0.55 } },
-    { selector: ".dim", style: { opacity: 0.07, "text-opacity": 0 } },
-    { selector: "node:selected", style: { "border-width": 4, "border-color": "#e7ecf7", "border-opacity": 0.5 } },
+    { selector: "edge", style: { "curve-style": "bezier", width: 1.3, opacity: 0.5, "line-color": LINE } },
+    { selector: 'edge[rel="parent"]', style: { "line-color": "rgba(170,178,197,0.4)", width: 2, opacity: 0.7 } },
+    { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed", opacity: 0.6 } },
+    { selector: 'edge[rel="supersedes"]', style: { "line-color": ACCENT, "line-style": "dotted", width: 1.6, opacity: 0.7 } },
+    { selector: 'edge[rel="focuses"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.5 } },
+    { selector: ".dim", style: { opacity: 0.06, "text-opacity": 0 } },
+    { selector: "node:selected", style: { "border-width": 2.5, "border-color": ACCENT, "border-opacity": 0.9 } },
     { selector: "node.hot", style: { "text-opacity": 1 } },
-    { selector: "edge.hot", style: { opacity: 1, width: 2.6, "line-color": "#aebfe4" } },
+    { selector: "edge.hot", style: { opacity: 1, width: 2.4, "line-color": ACCENT } },
   ];
 }
 
@@ -309,7 +320,6 @@ function openPanel(node) {
   const type = node.data("type");
   let kicker = type;
   let html = "";
-
   if (type === "commit") {
     const n = nodeById(id) || {};
     kicker = "commit";
@@ -325,7 +335,6 @@ function openPanel(node) {
     kicker = "current focus";
     html = spine.journal ?? "";
   }
-
   const panel = $("#panel");
   panel.innerHTML = `
     <button class="panel-close" aria-label="Close">×</button>
@@ -354,9 +363,7 @@ function esc(s) {
 }
 
 function renderLegend() {
-  $("#legend").innerHTML = Object.entries(TYPE)
-    .map(([, v]) => `<span class="leg"><i style="background:${v.color}"></i>${v.label}</span>`)
-    .join("");
+  $("#legend").innerHTML = LEGEND.map((v) => `<span class="leg"><i style="background:${v.c}"></i>${v.label}</span>`).join("");
 }
 
 /* ---------- docs mode: three-pane (sidebar · content · TOC) ---------- */
@@ -389,8 +396,6 @@ function renderDoc(id) {
   $("#main").scrollTop = 0;
   buildToc(id);
 }
-
-// Generate the on-this-page rail from the rendered headings (ADR-0005).
 function buildToc(id) {
   const toc = $("#toc");
   const sel = id === "decisions" ? "article h1" : "article h2, article h3";
@@ -418,21 +423,6 @@ function buildToc(id) {
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     })
   );
-}
-
-/* ---------- starfield ---------- */
-function makeStars() {
-  const layer = document.createElement("div");
-  layer.className = "star-dots";
-  const shadows = [];
-  for (let i = 0; i < 170; i++) {
-    const x = Math.floor(Math.random() * 2600);
-    const y = Math.floor(Math.random() * 1700);
-    const a = (0.2 + Math.random() * 0.75).toFixed(2);
-    shadows.push(`${x}px ${y}px rgba(255,255,255,${a})`);
-  }
-  layer.style.boxShadow = shadows.join(",");
-  $(".stars").appendChild(layer);
 }
 
 boot();

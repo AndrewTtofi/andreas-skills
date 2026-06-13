@@ -1,16 +1,18 @@
 :root {
-  --space: #05060a;
-  --space-2: #080b12;
-  --glass: rgba(16, 22, 38, 0.55);
-  --line: rgba(159, 180, 221, 0.12);
-  --line-strong: rgba(159, 180, 221, 0.22);
-  --text: #e7ecf7;
-  --muted: #9aa6c2;
-  --faint: #6a7390;
-  --cyan: #7fd4ff;
-  --amber: #ffce6a;
-  --violet: #c8a8ff;
-  --mint: #9af5c4;
+  --space: #0d0f14;
+  --space-2: #11141b;
+  --glass: rgba(255, 255, 255, 0.04);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --text: #e6e8ee;
+  --muted: #9aa0ad;
+  --faint: #6b7280;
+  /* one accent; legacy hue names repointed to the refined ramp */
+  --accent: #6e7bf2;
+  --cyan: #6e7bf2;
+  --amber: #c2a878;
+  --violet: #8b8fb0;
+  --mint: #8aa0a0;
   --font-display: "Instrument Serif", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --font-body: "IBM Plex Sans", system-ui, sans-serif;
@@ -23,25 +25,10 @@ body {
   font-size: 15px;
   line-height: 1.65;
   color: var(--text);
-  background:
-    radial-gradient(120% 90% at 78% -10%, rgba(127, 212, 255, 0.1), transparent 55%),
-    radial-gradient(90% 80% at 10% 110%, rgba(200, 168, 255, 0.1), transparent 50%),
-    var(--space);
+  background: var(--space);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-
-/* starfield */
-.stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.star-dots {
-  position: absolute;
-  top: 0; left: 0;
-  width: 1.6px; height: 1.6px;
-  border-radius: 50%;
-  background: transparent;
-  animation: twinkle 6s ease-in-out infinite;
-}
-@keyframes twinkle { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.5; } }
 
 /* ---------- topbar ---------- */
 .topbar {
@@ -53,7 +40,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 26px;
-  background: linear-gradient(180deg, rgba(5, 6, 10, 0.85), rgba(5, 6, 10, 0));
+  background: linear-gradient(180deg, rgba(13, 15, 20, 0.92), rgba(13, 15, 20, 0));
+  border-bottom: 1px solid transparent;
   backdrop-filter: blur(8px);
 }
 .brand { display: flex; align-items: baseline; gap: 11px; }
@@ -79,7 +67,7 @@ body {
   transition: 0.16s;
 }
 .mode:hover { color: var(--text); }
-.mode.active { background: rgba(127, 212, 255, 0.14); color: var(--cyan); }
+.mode.active { background: rgba(110, 123, 242, 0.16); color: var(--accent); }
 
 .view { position: fixed; inset: 64px 0 0; z-index: 5; }
 /* ID selectors below (e.g. #docs-view) outrank the UA [hidden] rule, so make
@@ -162,10 +150,7 @@ body {
 /* ---------- docs ---------- */
 #docs-view {
   display: grid; grid-template-columns: 248px minmax(0, 1fr) 232px;
-  background:
-    radial-gradient(120% 90% at 78% -10%, rgba(127, 212, 255, 0.08), transparent 55%),
-    radial-gradient(90% 80% at 10% 110%, rgba(200, 168, 255, 0.08), transparent 50%),
-    var(--space);
+  background: var(--space);
 }
 .docs-rail { padding: 34px 16px; border-right: 1px solid var(--line); overflow-y: auto; }
 nav { display: flex; flex-direction: column; gap: 4px; }
@@ -193,7 +178,7 @@ nav { display: flex; flex-direction: column; gap: 4px; }
   transition: 0.16s;
 }
 .nav-item:hover { color: var(--text); background: rgba(159, 180, 221, 0.06); }
-.nav-item.active { color: var(--cyan); background: rgba(127, 212, 255, 0.1); box-shadow: inset 2px 0 0 var(--cyan); }
+.nav-item.active { color: var(--accent); background: rgba(110, 123, 242, 0.12); box-shadow: inset 2px 0 0 var(--accent); }
 .nav-item .badge {
   font-size: 11px; color: var(--faint);
   background: rgba(159, 180, 221, 0.1); border-radius: 20px; padding: 1px 8px;
@@ -249,10 +234,10 @@ nav { display: flex; flex-direction: column; gap: 4px; }
 .md ul, .md ol { margin: 0 0 1.1em; padding-left: 1.3em; }
 .md li { margin: 0.32em 0; }
 .md li::marker { color: var(--cyan); }
-.md a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid rgba(127, 212, 255, 0.4); }
+.md a { color: var(--accent); text-decoration: none; border-bottom: 1px solid rgba(110, 123, 242, 0.4); }
 .md a:hover { border-bottom-color: var(--cyan); }
 .md strong { color: var(--text); font-weight: 600; }
-.md code { font-family: var(--font-mono); font-size: 0.85em; background: rgba(127, 212, 255, 0.1); color: var(--cyan); padding: 0.12em 0.42em; border-radius: 5px; }
+.md code { font-family: var(--font-mono); font-size: 0.85em; background: rgba(110, 123, 242, 0.12); color: var(--accent); padding: 0.12em 0.42em; border-radius: 5px; }
 .md pre { background: #030407; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; overflow: auto; margin: 0 0 1.2em; }
 .md pre code { background: none; color: #c6d2ec; padding: 0; font-size: 13px; }
 .md blockquote { margin: 1.2em 0; padding: 0.3em 1.1em; border-left: 2px solid var(--cyan); color: var(--muted); font-style: italic; }
