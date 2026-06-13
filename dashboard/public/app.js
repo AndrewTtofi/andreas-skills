@@ -215,17 +215,19 @@ function layoutBrain() {
     edges.push({ a: byId[s], b: byId[t], rel: e.rel });
   }
 
-  // 1. deterministic seed — clusters on a phyllotaxis spiral by chronological
-  //    index (flow + spread); satellites beside a connection.
-  const clusters = items.filter((o) => o.isCluster).sort((a, b) => {
+  // 1. deterministic seed — clusters get an x-target by chronological order so
+  //    the sequence flows LEFT→RIGHT (oldest, PR #1, on the left; newest right).
+  //    Seed there with a hashed y; the force pass keeps that left→right flow.
+  const clusters = items.filter((o) => o.isCluster);
+  const chrono = clusters.slice().sort((a, b) => {
     const ta = gById[a.id].time, tb = gById[b.id].time;
-    return ta < tb ? 1 : ta > tb ? -1 : 0;
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
   });
-  const GOLD = Math.PI * (3 - Math.sqrt(5));
-  clusters.forEach((o, i) => {
-    const r = 70 * Math.sqrt(i + 1);
-    o.x = Math.cos(i * GOLD) * r;
-    o.y = Math.sin(i * GOLD) * r;
+  const SPACING = 230;
+  chrono.forEach((o, i) => {
+    o.xTarget = (i - (chrono.length - 1) / 2) * SPACING;
+    o.x = o.xTarget;
+    o.y = (hash(o.id) % 420) - 210;
   });
   for (const o of items) {
     if (o.isCluster) continue;
@@ -257,16 +259,20 @@ function layoutBrain() {
       const dx = e.a.x - e.b.x, dy = e.a.y - e.b.y;
       const d = Math.hypot(dx, dy) || 0.01;
       let f = (d * d) / K;
-      if (e.rel === "parent") f *= 2.1; // the sequence chain stays tight + in line
+      if (e.rel === "parent") f *= 1.3; // chain stays connected (x already fixed by time)
       e.a.fx -= (dx / d) * f; e.a.fy -= (dy / d) * f;
       e.b.fx += (dx / d) * f; e.b.fy += (dy / d) * f;
     }
-    for (const o of items) (o.fx += -o.x * 0.06), (o.fy += -o.y * 0.06);
+    for (const o of items) {
+      o.fy += -o.y * 0.02; // gentle vertical centering
+      if (o.xTarget === undefined) o.fx += -o.x * 0.01; // satellites: gentle x-centering
+    }
     for (const o of items) {
       const d = Math.hypot(o.fx, o.fy) || 1;
       const disp = Math.min(d, temp);
       o.x += (o.fx / d) * disp;
       o.y += (o.fy / d) * disp;
+      if (o.xTarget !== undefined) o.x = o.xTarget; // pin cluster x → strict left→right time order
     }
     temp *= 0.975;
   }
@@ -282,8 +288,18 @@ function layoutBrain() {
         const oy = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
         if (ox > 0 && oy > 0) {
           moved = true;
-          if (ox < oy) { const s = ((a.x <= b.x ? -1 : 1) * ox) / 2; a.x += s; b.x -= s; }
-          else { const s = ((a.y <= b.y ? -1 : 1) * oy) / 2; a.y += s; b.y -= s; }
+          // clusters keep their time-column x → resolve them in y; satellites free
+          const bothClusters = a.isCluster && b.isCluster;
+          if (ox < oy && !bothClusters) {
+            const dir = a.x <= b.x ? -1 : 1;
+            if (a.isCluster) b.x -= dir * ox;
+            else if (b.isCluster) a.x += dir * ox;
+            else (a.x += (dir * ox) / 2), (b.x -= (dir * ox) / 2);
+          } else {
+            const dir = a.y <= b.y ? -1 : 1;
+            a.y += (dir * oy) / 2;
+            b.y -= (dir * oy) / 2;
+          }
         }
       }
     }
