@@ -34,8 +34,9 @@ This skill creates it.
      already present.
    - `CLAUDE.md` — append the block from
      [templates/claude-gate.md](templates/claude-gate.md) (create `CLAUDE.md` if
-     absent). It's delimited by `spine:contracting-gate` markers; if those
-     markers already exist, leave them — don't add a second copy.
+     absent). It's wrapped in opening/closing `spine:contracting-gate` markers;
+     if the opening marker is already present anywhere in the file, the block is
+     installed — leave it, don't add a second copy.
 5. **Confirm with the user.** Show the seeded `conventions.md` commands and the
    `context.md` architecture map; correct anything wrong before finishing.
    Mention that the contracting gate is now active.
