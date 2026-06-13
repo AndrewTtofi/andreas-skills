@@ -45,3 +45,8 @@ generic. The repo root has no `package.json`; only `dashboard/` is an npm packag
 - The dashboard's design system is **Stripe-grade light** (white, navy ink, one
   blurple accent `#635bff`, Inter); new UI must read on white. See
   [[0008-stripe-grade-light-design-system]].
+- **The graph layout is deterministic** — no `Math.random`, no force library; a
+  hand-rolled spring+collision sim in `layoutBrain()` so it never scrambles on
+  reload and guarantees zero overlap. Interactions (expand, search, filter) reuse
+  those positions and never trigger a relayout. See
+  [[0013-deterministic-spring-collision-brain]].
