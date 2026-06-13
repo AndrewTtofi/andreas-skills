@@ -11,14 +11,43 @@ overlap, identical every reload**, navigated by fit/zoom/**search + a filter bar
 (date range + **label** chips). Labels are a first-class queryable layer the skills
 themselves produce (ADR `Labels:`, journal `{labels}`). All of it was built by
 **dogfooding the spine lifecycle on this repo**, so `.spine/` here is both the
-memory and the worked example. Everything is merged to `main` (PRs #7–#11).
-Nothing is in flight.
+memory and the worked example. Everything is merged to `main` (PRs #7–#12); CI (`validate` workflow) + branch
+protection now gate `main`.
 
-No open focus.
+**Active ({tooling, validate, manifest, ci, tests}, confidence ~92%):** harden
+`scripts/validate.mjs` against the Claude Code **manifest schema**. Today it only
+checks truthiness, so `author: "string"` passes but silently blocks
+`/plugin install` (footgun noted in `conventions.md`), and `marketplace.json`
+isn't validated at all. Scope: enforce **core install-blocker** type/shape rules
+on **both** manifests, two tiers (errors fail / warnings inform), refactor the
+schema logic into pure importable functions (`validate.mjs` = thin CLI wrapper),
+add a `node:test` suite, and have CI run validate + tests. Out: full JSON-Schema
+deps, format-lint extras (semver/name-pattern/SPDX), the dashboard.
+Assumptions: malformed JSON → clean error; missing `marketplace.json` → error;
+exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-None pending. Candidate follow-ups (not committed to):
+**Design** the manifest-schema validation: confirm the authoritative Claude Code
+`plugin.json`/`marketplace.json` rules, then define the pure
+`validateManifest`/`validateMarketplace` function shapes and the test fixtures.
+
+## Acceptance criteria (active work)
+
+- [ ] 1. `plugin.json` `author` as a bare string → **fails** (exit 1), message names "author must be an object with a name".
+- [ ] 2. `plugin.json` missing/empty `name`/`description`/`version` → fails, field-specific.
+- [ ] 3. `author` object missing `name` → fails.
+- [ ] 4. `marketplace.json` missing/non-object `owner` or missing `owner.name` → fails.
+- [ ] 5. `plugins[]` entry missing `name` or `source` → fails.
+- [ ] 6. Malformed JSON in either manifest → fails with `invalid JSON in <file>` (no raw stack trace).
+- [ ] 7. Missing `marketplace.json` → fails.
+- [ ] 8. Current real manifests → **passes** (exit 0).
+- [ ] 9. Best-practice nits (missing `license`/`keywords`, plugin↔marketplace `version` mismatch) → **warnings**, build still passes.
+- [ ] 10. Schema logic in pure importable functions returning `{errors, warnings}`; `validate.mjs` only prints + sets exit code.
+- [ ] 11. `node --test` passes a suite covering 1–9; CI runs validate + tests under the required `validate` check.
+- [ ] 12. Pre-existing checks (skill frontmatter, README/skills wiring) remain and still pass.
+
+## Prior candidate follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
   currently overlap a neighbour; the default brain is overlap-free).
 - Surface more `concept` nodes (only "Spine" crosses the ≥2-ADR bar today).
