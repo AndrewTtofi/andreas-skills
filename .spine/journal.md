@@ -17,7 +17,14 @@ readable.
 
 ## Next step
 
-`build` slice 1: `git-reader` returns files-touched per commit, test-first.
+Brain built + verified (37/37, validator green). **Opened PR #9**
+(https://github.com/AndrewTtofi/spine/pull/9) for the cohesion + Stripe-light +
+brain work — which had been committed to the branch *after* PR #8 merged and so
+was orphaned (not in main / no PR). Awaiting review/merge, then `remember`.
+
+Process note: PR #8 (PR-clustering + three-pane docs) was merged at 08:55 UTC; I
+kept committing to the same branch and wrongly reported "pushed to PR #8". Check
+PR state before claiming a push lands in it.
 
 ## Build plan (iteration 4)
 
@@ -60,14 +67,15 @@ Cross-cutting:
 
 ## History
 
-- 2026-06-13 — **PR #8 (open)** iterations on the dashboard:
-  (a) PR-clustering + three-pane enterprise docs [[0004-cluster-commits-by-pull-request]],
-  [[0005-docs-three-pane-with-generated-toc]];
-  (b) cohesion + refined-dark, every commit clustered + in-flight "Current branch"
-  [[0006-cluster-every-commit-into-segments]], [[0007-refined-dark-professional-palette]];
-  (c) Stripe-grade light reskin (Inter, white, #635bff)
-  [[0008-stripe-grade-light-design-system]];
-  (d) — in progress — the brain [[0009-knowledge-graph-brain-with-hubs]].
+- 2026-06-13 — **PR #9 (open)**: cohesion (every commit clustered + in-flight
+  "Current branch") [[0006-cluster-every-commit-into-segments]]; Stripe-grade light
+  reskin [[0008-stripe-grade-light-design-system]]; and the force-directed
+  knowledge-graph **brain** (module hubs, concept nodes, non-sequential edges,
+  fit/zoom/search) [[0009-knowledge-graph-brain-with-hubs]]. Built on the branch
+  after #8 merged. 37/37 tests. ([[0007-refined-dark-professional-palette]] was an
+  intermediate dark step, superseded by 0008.)
+- 2026-06-13 — **PR #8 (merged)**: PR-clustering + three-pane enterprise docs
+  [[0004-cluster-commits-by-pull-request]], [[0005-docs-three-pane-with-generated-toc]].
 - 2026-06-13 — **PR #7 (merged, `df26c02`)**: v1.1 skills (ship/troubleshoot/
   new-skill) + plugin author fix + the original dashboard graph redesign
   (git-reader backbone, Spine overlay, vertical timeline). 26/26 tests.
