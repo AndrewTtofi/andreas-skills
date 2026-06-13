@@ -28,8 +28,9 @@ palette (charcoal + slate + one indigo accent; no neon, no starfield).
 
 ## Next step
 
-`build` slice 2: `app.js` cohesion (single column, nested decisions, focus at
-top) + refined-dark Cytoscape colours.
+Iteration 3 verified (suite 32/32, validator green; no console errors) and pushed
+to the open PR #8. Awaiting review/merge, then `remember`. The dashboard is live
+at :4317 on this branch.
 
 ## Build plan (iteration 3)
 
