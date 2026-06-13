@@ -18,8 +18,7 @@ No open focus.
 
 ## Next step
 
-**Await review / merge of PR #12** (the contracting gate). Then candidate
-follow-ups (not committed to):
+None pending. Candidate follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
   currently overlap a neighbour; the default brain is overlap-free).
 - Surface more `concept` nodes (only "Spine" crosses the ≥2-ADR bar today).
@@ -27,7 +26,7 @@ follow-ups (not committed to):
 
 ## History
 
-- 2026-06-13 {skills, align, init, gate, dogfood} — **PR #12 (open)**: the
+- 2026-06-13 {skills, align, init, gate, dogfood} — **PR #12 (merged, `4f02c64`)**: the
   **contracting gate**. `align` reworked into an extensive, certainty-gated
   intent interview — 12 interrogation dimensions, an explicit confidence score,
   and a context playback the user must confirm before any building. `init` now
