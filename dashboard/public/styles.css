@@ -75,13 +75,14 @@ body {
 /* ---------- graph ---------- */
 #graph-view { background: var(--bg-subtle); }
 #cy { position: absolute; inset: 0; }
-.search {
+.controls {
   position: absolute;
-  top: 18px; left: 50%; transform: translateX(-50%);
+  top: 16px; left: 50%; transform: translateX(-50%);
   z-index: 9;
-  width: min(420px, 60vw);
+  width: min(780px, 90vw);
+  display: flex; flex-direction: column; gap: 8px;
 }
-.search input {
+.ctl-search {
   width: 100%;
   font-family: var(--font-sans);
   font-size: 13.5px;
@@ -94,8 +95,35 @@ body {
   outline: none;
   transition: 0.15s;
 }
-.search input::placeholder { color: var(--faint); }
-.search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ctl-search::placeholder { color: var(--faint); }
+.ctl-search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ctl-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-shadow: var(--shadow-sm);
+  padding: 7px 10px;
+}
+.ctl-time { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.ctl-time input[type="range"] { width: 58px; accent-color: var(--accent); cursor: pointer; }
+.ctl-time-text { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 96px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding: 2px 0; scrollbar-width: thin; }
+.chip {
+  flex-shrink: 0;
+  font-family: var(--font-sans); font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 11px;
+  cursor: pointer; white-space: nowrap;
+  transition: 0.15s;
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text); }
+.chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ctl-clear { flex-shrink: 0; font-family: var(--font-sans); font-size: 12px; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 4px 6px; }
+.ctl-clear:hover { color: var(--text); }
 .legend {
   position: absolute;
   left: 22px;

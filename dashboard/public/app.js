@@ -46,7 +46,7 @@ async function boot() {
   if (!spine.exists) {
     $("#hint").hidden = true;
     $("#legend").hidden = true;
-    $(".search").hidden = true;
+    $(".controls").hidden = true;
     $("#cy").innerHTML = `<div class="floatmsg"><div class="kicker">no spine</div><h1>Nothing recorded here yet</h1><p>Run <code>init</code> to create a <code>.spine/</code> store, then refresh.</p></div>`;
     return;
   }
@@ -54,6 +54,7 @@ async function boot() {
   renderLegend();
   renderDocsNav();
   setupSearch();
+  setupFilter();
 }
 
 function setupModes() {
@@ -92,7 +93,8 @@ function nodeData(n) {
   const deg = degreeOf(n.id);
   if (isGroup(n)) {
     const open = expanded.has(n.id);
-    return { id: n.id, type: n.type, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}`, deg };
+    const wip = n.label === "Current branch" ? 1 : 0;
+    return { id: n.id, type: n.type, wip, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}${wip ? "   ● WIP" : ""}`, deg };
   }
   if (n.type === "module") return { id: n.id, type: "module", label: n.label, size: 16 + Math.min(n.count, 8) * 4, deg };
   if (n.type === "concept") return { id: n.id, type: "concept", label: n.label, deg };
@@ -267,6 +269,11 @@ function graphStyle() {
         "text-outline-width": 0,
       },
     },
+    // WIP anchor: the Current-branch cluster, accent-filled
+    {
+      selector: "node[wip = 1]",
+      style: { "background-color": ACCENT, "border-color": ACCENT, color: "#ffffff" },
+    },
     {
       selector: 'node[type="module"]',
       style: {
@@ -408,6 +415,86 @@ function runSearch(raw) {
   hits.removeClass("dim").addClass("search-hit");
   hits.neighborhood().removeClass("dim");
   cy.animate({ fit: { eles: hits, padding: 140 } }, { duration: 320 });
+}
+
+/* ---------- filter bar: by date window + labels ---------- */
+let dates = []; // sorted distinct YYYY-MM-DD present in the graph
+const activeLabels = new Set();
+
+function setupFilter() {
+  const labelSet = new Set();
+  graph.nodes.forEach((n) => (n.labels || []).forEach((l) => labelSet.add(l)));
+  $("#chips").innerHTML = [...labelSet]
+    .sort()
+    .map((l) => `<button class="chip" type="button" data-label="${esc(l)}">${esc(l)}</button>`)
+    .join("");
+  $("#chips").querySelectorAll(".chip").forEach((b) =>
+    b.addEventListener("click", () => {
+      const l = b.dataset.label;
+      if (activeLabels.has(l)) (activeLabels.delete(l), b.classList.remove("active"));
+      else (activeLabels.add(l), b.classList.add("active"));
+      applyFilter();
+    })
+  );
+
+  dates = [...new Set(graph.nodes.filter((n) => n.time).map((n) => n.time.slice(0, 10)))].sort();
+  const mn = $("#time-min"), mx = $("#time-max");
+  mn.max = mx.max = Math.max(dates.length - 1, 0);
+  mn.value = 0;
+  mx.value = dates.length - 1;
+  mn.addEventListener("input", () => clampTime(true));
+  mx.addEventListener("input", () => clampTime(false));
+  $("#clear-filter").addEventListener("click", () => {
+    activeLabels.clear();
+    $("#chips").querySelectorAll(".chip").forEach((b) => b.classList.remove("active"));
+    mn.value = 0;
+    mx.value = dates.length - 1;
+    updateTimeText();
+    applyFilter();
+  });
+  updateTimeText();
+}
+function clampTime(isMin) {
+  const mn = $("#time-min"), mx = $("#time-max");
+  if (+mn.value > +mx.value) isMin ? (mx.value = mn.value) : (mn.value = mx.value);
+  updateTimeText();
+  applyFilter();
+}
+function updateTimeText() {
+  if (!dates.length) return ($("#time-text").textContent = "");
+  const a = dates[+$("#time-min").value], b = dates[+$("#time-max").value];
+  const full = +$("#time-min").value === 0 && +$("#time-max").value === dates.length - 1;
+  $("#time-text").textContent = full ? "all dates" : `${fmtShort(a)} – ${fmtShort(b)}`;
+}
+function fmtShort(d) {
+  const dt = new Date(d);
+  return Number.isNaN(+dt) ? d : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function applyFilter() {
+  if (!cy) return;
+  const from = dates[+$("#time-min").value];
+  const to = dates[+$("#time-max").value];
+  cy.batch(() => {
+    cy.nodes().forEach((node) => {
+      const n = nodeById(node.id());
+      node.style("display", !n || nodePasses(n, from, to) ? "element" : "none");
+    });
+    cy.edges().forEach((e) => {
+      const hidden = e.source().style("display") === "none" || e.target().style("display") === "none";
+      e.style("display", hidden ? "none" : "element");
+    });
+  });
+}
+function nodePasses(n, from, to) {
+  if (n.type === "segment" && n.label === "Current branch") return true; // WIP always visible
+  if (n.time && from && to) {
+    const d = n.time.slice(0, 10);
+    if (d < from || d > to) return false;
+  }
+  if (activeLabels.size) {
+    if (!(n.labels || []).some((l) => activeLabels.has(l))) return false;
+  }
+  return true;
 }
 
 function openPanel(node) {

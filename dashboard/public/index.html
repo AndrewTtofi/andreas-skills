@@ -31,9 +31,20 @@
 
   <section id="graph-view" class="view">
     <div id="cy"></div>
-    <div class="search"><input id="q" type="search" placeholder="Search PRs, commits, files, decisions…" autocomplete="off" /></div>
+    <div class="controls">
+      <input id="q" class="ctl-search" type="search" placeholder="Search PRs, commits, files, decisions…" autocomplete="off" />
+      <div class="ctl-row">
+        <div class="ctl-time" title="Filter by date">
+          <input id="time-min" type="range" min="0" max="0" value="0" aria-label="from date" />
+          <input id="time-max" type="range" min="0" max="0" value="0" aria-label="to date" />
+          <span class="ctl-time-text" id="time-text"></span>
+        </div>
+        <div class="chips" id="chips"></div>
+        <button class="ctl-clear" id="clear-filter" type="button">Clear</button>
+      </div>
+    </div>
     <div class="legend" id="legend"></div>
-    <div class="hint" id="hint">scroll to zoom · drag to pan · search to jump · click a cluster to expand</div>
+    <div class="hint" id="hint">scroll to zoom · drag to pan · search & filter · click a cluster to expand</div>
     <aside id="panel" class="panel" hidden></aside>
   </section>
 

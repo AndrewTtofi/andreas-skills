@@ -19,8 +19,8 @@ filterable.
 
 ## Next step
 
-`build` slice 2: filter bar (time range + label chips, hide non-matching) + WIP
-anchor on the Current-branch cluster.
+`build` slice 3: Spine + skills convention — `adr-format.md` `labels:`, journal
+template `{labels}`, align/design/remember SKILL.md, `CLAUDE.md`, backfill `.spine/`.
 
 ## Build plan (iteration 5)
 
@@ -49,15 +49,15 @@ Labels (data — `graph-builder`):
       and `[minTime,maxTime]` (slice 2). Real repo: 20 distinct labels.
 
 Filter bar (dashboard):
-- [ ] A date-range control filters the brain to nodes within the window; nodes
-      outside are hidden (no relayout — positions unchanged).
-- [ ] Label chips (all labels in the graph) toggle a filter; a node shows iff
-      (no chips selected OR it carries a selected label) AND it's in the window.
-- [ ] Clearing filters restores every node to its place.
+- [x] A date-range control (two sliders) hides nodes outside the window — no
+      relayout (display:none, positions unchanged).
+- [x] Label chips toggle; a node shows iff (no chips OR it carries a selected
+      label) AND in the window. (verified: `ux` → only ux-labelled nodes + WIP)
+- [x] Clear restores every node to its place.
 
 WIP anchor:
-- [ ] The "Current branch" cluster is accent-filled with a `WIP` badge and stays
-      visible/identifiable as "now".
+- [x] The "Current branch" cluster is accent-filled with a `● WIP` badge and is
+      exempt from filters (always visible as "now"). (/tmp/filter-ux.png)
 
 Spine + skills convention:
 - [ ] `skills/design/adr-format.md` ADR template includes a `labels:` field.
