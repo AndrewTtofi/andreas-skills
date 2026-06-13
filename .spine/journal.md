@@ -19,7 +19,9 @@ rebase repos show loose commits (known limit); zero new deps.
 
 ## Next step
 
-Verified — ready to `ship` (PR `dashboard-approachability` → `main`).
+**Shipped** → PR #8 (https://github.com/AndrewTtofi/spine/pull/8),
+`dashboard-approachability` → `main`. Awaiting review/merge; run `remember` once
+merged.
 
 ## Verification (2026-06-13, iteration 2)
 
