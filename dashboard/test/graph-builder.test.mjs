@@ -115,7 +115,7 @@ const D = sha("d11"), M = sha("merge1"), M1 = sha("a11"), B2 = sha("b22"), B1 = 
 const PR_GIT = {
   available: true,
   commits: [
-    { sha: D, shortSha: "d11", parents: [M], subject: "direct fix on main", body: "", author: "A", date: "2026-06-13T12:00:00+00:00", files: ["dashboard/graph-builder.mjs"] },
+    { sha: D, shortSha: "d11", parents: [M], subject: "direct fix on main", body: "", author: "A", date: "2026-06-13T12:00:00+00:00", files: ["dashboard/graph-builder.mjs", "README.md"] },
     { sha: M, shortSha: "merge1", parents: [M1, B2], subject: "Merge pull request #1 from me/feat", body: "Add the feature", author: "A", date: "2026-06-13T11:00:00+00:00", files: [] },
     { sha: M1, shortSha: "a11", parents: [M0], subject: "earlier mainline", body: "", author: "A", date: "2026-06-11T10:00:00+00:00", files: ["README.md"] },
     { sha: B2, shortSha: "b22", parents: [B1], subject: "branch work 2", body: "", author: "A", date: "2026-06-12T10:00:00+00:00", files: ["dashboard/graph-builder.mjs"] },
@@ -193,7 +193,13 @@ test("a file touched by ≥2 clusters becomes a module hub with touches edges", 
 test("a file touched by only one cluster is NOT a hub", () => {
   const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
   assert.ok(!g.nodes.some((n) => n.id === "mod:dashboard/app.js")); // only PR #1
-  assert.ok(!g.nodes.some((n) => n.id === "mod:README.md")); // only Direct-to-main
+});
+
+test("meta/doc files are excluded from hubs even when shared by ≥2 clusters", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  // README.md is touched by Current-branch (d11) and Direct-to-main (a11/0000) —
+  // shared, but it's a doc, so it must not become a hub (keeps the brain code-focused).
+  assert.ok(!g.nodes.some((n) => n.id === "mod:README.md"));
 });
 
 test("ADR [[wikilinks]] become references edges", () => {

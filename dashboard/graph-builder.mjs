@@ -152,8 +152,14 @@ function addModuleHubs(commits, groupOf, nodes, edges) {
   }
 }
 
-// Map a file path to a meaningful module grouping.
+// Meta/doc paths make poor hubs — nearly every PR edits the README, journal, or
+// manifests, so they connect everything and signal nothing. Exclude them to keep
+// the brain focused on code modules. See .spine/decisions/0009.
+const META = /(^|\/)(README|CONTRIBUTING|CLAUDE|CONTEXT|LICENSE|CHANGELOG)[^/]*$|^docs\/|^\.claude-plugin\/|^\.spine\//;
+
+// Map a file path to a meaningful code-module grouping (or null to exclude).
 function moduleOf(path) {
+  if (META.test(path)) return null;
   const p = path.split("/");
   if (p[0] === "skills" && p.length >= 2) return `skills/${p[1]}`;
   if (p[0] === "dashboard" && p.length >= 2) {
@@ -161,10 +167,8 @@ function moduleOf(path) {
     if (p[1] === "test") return "dashboard/test";
     return `dashboard/${p[1]}`;
   }
-  if (p[0] === ".spine") return ".spine";
-  if (p[0] === "docs") return "docs";
-  if (p[0] === ".claude-plugin") return ".claude-plugin";
-  if (p.length === 1) return path; // top-level file
+  if (p[0] === "scripts") return "scripts";
+  if (p.length === 1) return null; // bare top-level files are usually config/meta
   return p[0];
 }
 
