@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -d .spine && printf '%s' 'Spine contracting gate: this repo has a .spine/ memory store. For any non-trivial feature, change, or fix, invoke the align skill FIRST and run it to completion (extensive interview -> explicit confidence score -> context playback the user confirms) BEFORE building. Trivial edits, questions, and mechanical chores are exempt.' || true"
+          }
+        ]
+      }
+    ]
+  }
+}
