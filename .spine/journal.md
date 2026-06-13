@@ -2,6 +2,30 @@
 
 ## Current focus
 
+**Iteration 6 — a true brain that keeps the sequence in line and never overlaps.**
+Feedback: the layout must be brain-like (organic web), keep a legible chronological
+**sequence "in line"** within it, have **zero overlap**, stay **deterministic**
+(no scramble on reload), and scale to ~100 PRs with **no scrolling** (navigate one
+fit-to-view brain via search + filters + zoom). {dashboard, graph, ux, layout}
+
+### Acceptance criteria (iteration 6)
+
+- [ ] Brain-like organic web (force-style), not a rigid line or fixed columns.
+- [ ] The cluster chain (the chronological `parent` path) is kept **in line** —
+      consecutive clusters adjacent and in time order, a sequence you can trace
+      through the brain.
+- [ ] **Zero overlap**: no two node bounding boxes intersect (verified
+      programmatically, not just by eye).
+- [ ] **Deterministic**: identical positions on every reload (no force-layout
+      scramble).
+- [ ] Scales without scrolling: fit-to-view shows the whole brain; find things via
+      search + label/date filters + zoom (works at ~100 clusters).
+- [ ] Existing interactions intact: expand→commit ring, search, filter bar, WIP.
+- [ ] `node --test` + `node scripts/validate.mjs` green; zero new deps (hand-rolled
+      deterministic spring+collision sim, no force library).
+
+### Prior focus (iteration 5 — shipped to PR #11)
+
 **Iteration 5 — labels, timeline filtering, and a WIP anchor (woven through the
 Spine + skills, not just the dashboard).** Make the whole path queryable and
 filterable.
@@ -19,8 +43,9 @@ filterable.
 
 ## Next step
 
-Iteration 5 verified (42/42, validator green; filter + WIP confirmed live —
-/tmp/filter-ux.png) and shipped. Awaiting review/merge, then `remember`.
+`build`: rewrite `layoutBrain()` as the deterministic spring+collision sim
+([[0013-deterministic-spring-collision-brain]]). Verify live: brain + traceable
+sequence chain + zero overlap (programmatic) + determinism + fit-to-view. Then ship.
 
 ## Build plan (iteration 5)
 
