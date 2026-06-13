@@ -34,7 +34,7 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     const commits = git.commits; // newest-first
     const shaSet = new Set(commits.map((c) => c.sha));
     const milestones = extractHistoryMilestones(s.journal);
-    const { prNodes, groupOf } = clusterByPullRequest(commits);
+    const { groupNodes, groupOf } = clusterCommits(commits);
 
     for (const c of commits) {
       const milestone = matchMilestone(c, milestones);
@@ -54,7 +54,7 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
         if (shaSet.has(p)) edges.push({ source: `commit:${c.sha}`, target: `commit:${p}`, rel: "parent" });
       }
     }
-    for (const pr of prNodes) nodes.push(pr);
+    for (const gn of groupNodes) nodes.push(gn);
 
     for (const d of decisions) {
       nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date });
@@ -85,11 +85,12 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
   return { nodes, edges };
 }
 
-// Cluster commits by the pull request they landed in. A `Merge pull request #N`
-// commit becomes a `pr` group node; its members are the merge plus the branch
-// commits (reachable from the merge's 2nd parent, not its 1st). See
-// .spine/decisions/0004. Returns { prNodes, groupOf: Map<sha, "pr:N"> }.
-function clusterByPullRequest(commits) {
+// Partition every commit into a group so nothing is loose (.spine/decisions/0004,
+// 0006): `Merge pull request #N` commits become `pr` clusters (merge + branch
+// commits); each maximal run of non-merge mainline commits becomes a `segment`
+// cluster (the newest run = "Current branch"; older = "Direct to main").
+// Returns { groupNodes, groupOf: Map<sha, "pr:N"|"seg:x"> }.
+function clusterCommits(commits) {
   const bySha = new Map(commits.map((c) => [c.sha, c]));
   const reachable = (start) => {
     const seen = new Set();
@@ -102,17 +103,17 @@ function clusterByPullRequest(commits) {
     }
     return seen;
   };
+  const isPrMerge = (c) => c.parents.length >= 2 && /^Merge pull request #(\d+)/.test(c.subject);
 
-  const prNodes = [];
+  const groupNodes = [];
   const groupOf = new Map();
-  for (const c of commits) {
-    const m = c.subject.match(/^Merge pull request #(\d+)/);
-    if (!m || c.parents.length < 2) continue;
-    const number = Number(m[1]);
-    const [mainParent, branchTip] = c.parents;
-    const base = reachable(mainParent); // everything already on mainline
 
-    // Walk the branch: reachable from branchTip but not from mainParent.
+  // 1. PR clusters: merge + its branch commits.
+  for (const c of commits) {
+    if (!isPrMerge(c)) continue;
+    const number = Number(c.subject.match(/^Merge pull request #(\d+)/)[1]);
+    const [mainParent, branchTip] = c.parents;
+    const base = reachable(mainParent);
     const branch = [];
     const seen = new Set();
     const stack = [branchTip];
@@ -123,13 +124,40 @@ function clusterByPullRequest(commits) {
       if (!groupOf.has(s)) branch.push(s);
       for (const p of bySha.get(s).parents) stack.push(p);
     }
-
     const id = `pr:${number}`;
-    groupOf.set(c.sha, id); // the merge hides into its group
+    groupOf.set(c.sha, id);
     for (const s of branch) groupOf.set(s, id);
-    prNodes.push({ id, type: "pr", label: `#${number} · ${prTitle(c)}`, number, count: branch.length, time: c.date });
+    groupNodes.push({ id, type: "pr", label: `#${number} · ${prTitle(c)}`, number, count: branch.length, time: c.date });
   }
-  return { prNodes, groupOf };
+
+  // 2. Segment clusters: runs of non-merge commits along the first-parent chain.
+  const headSha = commits[0] && commits[0].sha;
+  const mainline = [];
+  const guard = new Set();
+  let cur = headSha;
+  while (cur && bySha.has(cur) && !guard.has(cur)) {
+    guard.add(cur);
+    mainline.push(bySha.get(cur));
+    cur = bySha.get(cur).parents[0];
+  }
+  let run = [];
+  const flush = () => {
+    if (!run.length) return;
+    const first = run[0]; // newest commit in the run
+    const id = `seg:${first.shortSha}`;
+    const isHead = run.some((c) => c.sha === headSha);
+    const label = isHead ? "Current branch" : `Direct to main · ${(first.date || "").slice(0, 10)}`;
+    groupNodes.push({ id, type: "segment", label, count: run.length, time: first.date });
+    for (const c of run) groupOf.set(c.sha, id);
+    run = [];
+  };
+  for (const c of mainline) {
+    if (isPrMerge(c) || groupOf.has(c.sha)) flush();
+    else run.push(c);
+  }
+  flush();
+
+  return { groupNodes, groupOf };
 }
 
 function prTitle(mergeCommit) {

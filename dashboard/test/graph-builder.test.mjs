@@ -143,11 +143,28 @@ test("branch commits + the merge are tagged with the pr group", () => {
   assert.equal(groupOf(g, M), "pr:1"); // the merge hides into its group
 });
 
-test("commits not in any PR are loose (no group)", () => {
+test("every commit is grouped — non-PR mainline commits fall into segments", () => {
   const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
-  assert.equal(groupOf(g, D), undefined); // direct-on-main
-  assert.equal(groupOf(g, M1), undefined); // mainline
-  assert.equal(groupOf(g, M0), undefined); // merge base / root
+  assert.match(groupOf(g, D), /^seg:/); // direct-on-main HEAD
+  assert.match(groupOf(g, M1), /^seg:/); // mainline
+  assert.match(groupOf(g, M0), /^seg:/); // root
+  assert.ok(g.nodes.filter((n) => n.type === "commit").every((n) => n.group), "no loose commits");
+});
+
+test("the newest non-merge run is the 'Current branch' segment", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  const cur = g.nodes.find((n) => n.type === "segment" && n.label === "Current branch");
+  assert.ok(cur, "current-branch segment exists");
+  assert.equal(groupOf(g, D), cur.id); // the unmerged HEAD commit
+  assert.equal(cur.count, 1);
+});
+
+test("older non-merge runs are 'Direct to main' segments", () => {
+  const g = buildGraph(MINI_SPINE, "/repo", { git: PR_GIT });
+  const direct = g.nodes.find((n) => n.type === "segment" && /^Direct to main/.test(n.label));
+  assert.ok(direct);
+  assert.equal(groupOf(g, M1), direct.id);
+  assert.equal(groupOf(g, M0), direct.id);
 });
 
 test("history with no PR merges produces no pr nodes (backstop)", () => {

@@ -28,7 +28,8 @@ palette (charcoal + slate + one indigo accent; no neon, no starfield).
 
 ## Next step
 
-`build` slice 1: segment + in-flight clustering in `graph-builder`, test-first.
+`build` slice 2: `app.js` cohesion (single column, nested decisions, focus at
+top) + refined-dark Cytoscape colours.
 
 ## Build plan (iteration 3)
 
@@ -49,10 +50,10 @@ Design in [[0006-cluster-every-commit-into-segments]],
 ## Acceptance criteria (iteration 3)
 
 Graph cohesion + completeness (still Cytoscape nodes+links):
-- [ ] Every mainline commit belongs to a cluster — no bare loose dots. PR merges
-      → PR clusters; contiguous non-merge runs → segment clusters.
-- [ ] In-flight work (commits newer than the latest PR merge on the first-parent
-      chain) clusters as "Current branch" — so PR #8's commits cluster.
+- [x] Every mainline commit belongs to a cluster — no bare loose dots (real repo:
+      0 loose). PR merges → PR clusters; non-merge runs → segment clusters.
+- [x] In-flight work clusters as "Current branch" (real repo: 8 commits) — PR #8
+      now clusters.
 - [ ] Decisions nest into their cluster: collapsed shows a decision count;
       expanding reveals ADR nodes adjacent to the cluster (no far-right lane).
 - [ ] Focus is integrated at the top of the spine (linked into the column), not
