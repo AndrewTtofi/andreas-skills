@@ -19,8 +19,8 @@ filterable.
 
 ## Next step
 
-`verify` + `ship`: full suite + validator green; screenshots; then open the PR
-for iteration 5 (labels + filter bar + WIP + skills convention).
+Iteration 5 verified (42/42, validator green; filter + WIP confirmed live —
+/tmp/filter-ux.png) and shipped. Awaiting review/merge, then `remember`.
 
 ## Build plan (iteration 5)
 
