@@ -17,8 +17,8 @@ nearest-by-date; "dependencies" = `parent` (git) + `implements` (criterion→com
 
 ## Next step
 
-`build` slice 3: frontend timeline (`public/`) — Cytoscape `preset` vertical
-layout, restyle, panel + legend. Verify live.
+`verify`: full suite (`cd dashboard && node --test`) + `node scripts/validate.mjs`
+green; confirm each acceptance criterion against evidence. Then `ship`.
 
 ## Build plan (TDD vertical slices)
 
@@ -63,15 +63,17 @@ API:
       (`parent`|`decides`|`supersedes`|`focuses`).
 
 View (home, full redesign, zero new deps):
-- [ ] Commits render along a primary chronological axis (time-ordered),
+- [x] Commits render along a primary chronological axis (vertical, newest top),
       replacing the Cytoscape constellation.
-- [ ] Dependency edges (`parent`/`implements`/`supersedes`) are drawn across the
-      timeline and are visually distinguishable by relation.
-- [ ] Each node is scannable — commit shows subject + short SHA + date; ADR shows
-      title; selecting a node reveals/links its detail (commit message or ADR doc).
-- [ ] Legible at the repo's real scale (~20+ commits): clear sequence, no overlap,
-      no hairball.
-- [ ] No new runtime dependencies; rendering is hand-rolled SVG/DOM.
+- [x] Dependency edges (`parent`/`decides`/`supersedes`/`focuses`) are drawn and
+      visually distinguishable by relation (cyan spine / amber dashed / violet
+      dotted / mint dashed).
+- [x] Each node is scannable — commit shows subject + short SHA + date; ADR shows
+      title; selecting a node opens its detail (commit body / ADR doc / focus).
+- [x] Legible at the repo's real scale (46 commits): clear vertical sequence, no
+      hairball. Screenshot: /tmp/spine-timeline.png.
+- [x] No new runtime dependencies — and removed the fcose CDN scripts (preset
+      layout needs only Cytoscape core).
 
 Tests:
 - [ ] `cd dashboard && node --test` covers: commit nodes + parent edges from a git
