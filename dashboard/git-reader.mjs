@@ -1,12 +1,13 @@
 import { execFileSync } from "node:child_process";
 
-// Reads git commit history into structured data. The commit backbone of the
-// dashboard graph. Pure aside from the `run` it shells out through — which is
-// injectable so tests need no real repo. See .spine/decisions/0001.
+// Reads git commit history (incl. files touched) into structured data. The
+// backbone the dashboard graph is built from. Pure aside from the injectable
+// `run`. See .spine/decisions/0001, 0009.
 
+const RS = "\x1e"; // record separator (leads each commit)
 const US = "\x1f"; // field separator
-const RS = "\x1e"; // record separator
-const FORMAT = ["%H", "%P", "%an", "%aI", "%s", "%b"].join(US) + RS;
+// Trailing US separates %b from the file list that `--name-only` appends.
+const FORMAT = RS + ["%H", "%P", "%an", "%aI", "%s", "%b"].join(US) + US;
 
 function defaultRun(args, repoDir) {
   return execFileSync("git", args, {
@@ -20,17 +21,15 @@ function defaultRun(args, repoDir) {
 export function readGitHistory(repoDir, { run = defaultRun } = {}) {
   let out;
   try {
-    out = run(["log", `--pretty=format:${FORMAT}`], repoDir);
+    out = run(["log", "--name-only", `--pretty=format:${FORMAT}`], repoDir);
   } catch {
-    // Not a git repo, git not installed, or no commits yet.
     return { available: false, commits: [] };
   }
   if (!out || !out.trim()) return { available: false, commits: [] };
 
   const commits = out
     .split(RS)
-    .map((r) => r.trim())
-    .filter(Boolean)
+    .filter((r) => r.trim())
     .map(parseRecord)
     .filter(Boolean);
 
@@ -39,15 +38,20 @@ export function readGitHistory(repoDir, { run = defaultRun } = {}) {
 }
 
 function parseRecord(record) {
-  const [sha, parents, author, date, subject, ...rest] = record.split(US);
+  const p = record.split(US);
+  const sha = (p[0] || "").trim();
   if (!sha) return null;
   return {
     sha,
     shortSha: sha.slice(0, 7),
-    parents: parents ? parents.split(" ").filter(Boolean) : [],
-    author: author ?? "",
-    date: date ?? "",
-    subject: subject ?? "",
-    body: rest.join(US).trim(),
+    parents: p[1] ? p[1].split(" ").filter(Boolean) : [],
+    author: (p[2] || "").trim(),
+    date: (p[3] || "").trim(),
+    subject: (p[4] || "").trim(),
+    body: (p[5] || "").trim(),
+    files: (p[6] || "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean),
   };
 }

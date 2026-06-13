@@ -1,11 +1,19 @@
 const $ = (s) => document.querySelector(s);
 
-const TYPE = {
-  pr: { color: "#cdd8f0", label: "pull requests" },
-  commit: { color: "#7fd4ff", label: "commits" },
-  decision: { color: "#ffce6a", label: "decisions" },
-  focus: { color: "#9af5c4", label: "current focus" },
-};
+// Stripe-grade light palette (.spine/decisions/0008): navy ink + one blurple accent.
+const ACCENT = "#635bff";
+const DOT = "#8792a2";
+const INK = "#0a2540";
+const SLATE = "#52607a";
+const LINE = "#d4dae3";
+const HUB = "#aab4c4";
+const LEGEND = [
+  { c: ACCENT, label: "pull requests" },
+  { c: HUB, label: "modules" },
+  { c: "#b9c2cf", label: "decisions" },
+  { c: "#8a83ff", label: "concepts" },
+  { c: DOT, label: "commits" },
+];
 const DOCS = [
   ["architecture", "Architecture"],
   ["conventions", "Conventions"],
@@ -18,22 +26,13 @@ const DOC_SECTIONS = [
 ];
 const docLabel = (id) => (DOCS.find((d) => d[0] === id) || [id, id])[1];
 
-// Timeline geometry (model coordinates). The spine (PR groups + loose commits)
-// runs down x=0, newest at top; expanded commits indent right; decisions sit in
-// a far-right lane; focus floats up-left.
-const ROW = 96; // spine row height
-const MEMROW = 60; // expanded member row height
-const MEM_X = 165; // indent for expanded commits
-const DEC_X = 410; // decision lane
-
 let spine = null;
 let graph = null;
 let cy = null;
-let expanded = new Set(); // pr ids currently expanded (default: all collapsed)
+let expanded = new Set(); // cluster ids expanded to show their commits
 let docActive = "architecture";
 
 async function boot() {
-  makeStars();
   try {
     [spine, graph] = await Promise.all([
       fetch("/api/spine").then((r) => r.json()),
@@ -47,12 +46,14 @@ async function boot() {
   if (!spine.exists) {
     $("#hint").hidden = true;
     $("#legend").hidden = true;
+    $(".search").hidden = true;
     $("#cy").innerHTML = `<div class="floatmsg"><div class="kicker">no spine</div><h1>Nothing recorded here yet</h1><p>Run <code>init</code> to create a <code>.spine/</code> store, then refresh.</p></div>`;
     return;
   }
   renderGraph();
   renderLegend();
   renderDocsNav();
+  setupSearch();
 }
 
 function setupModes() {
@@ -66,115 +67,81 @@ function switchMode(m) {
   $("#docs-view").hidden = m !== "docs";
   if (m === "graph" && cy) {
     cy.resize();
-    focusTop();
+    cy.fit(undefined, 60);
   }
   if (m === "docs") renderDoc(docActive);
 }
 
-/* ---------- graph: PR-clustered timeline with collapse/expand ---------- */
+/* ---------- the brain: force-directed knowledge graph ---------- */
 
 const nodeById = (id) => graph.nodes.find((n) => n.id === id);
+const isGroup = (n) => n && (n.type === "pr" || n.type === "segment");
 
-// A commit in a collapsed group resolves to its group node; everything else is itself.
+// Commits hide inside collapsed clusters; every other node is always present.
+function isVisible(n) {
+  return n.type !== "commit" || expanded.has(n.group);
+}
 function resolve(id) {
   const n = nodeById(id);
   if (n && n.type === "commit" && n.group && !expanded.has(n.group)) return n.group;
   return id;
 }
-function isVisible(n) {
-  if (n.type === "commit") return !n.group || expanded.has(n.group);
-  return true; // pr, decision, focus
-}
-
-const byTimeDesc = (a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0);
-
-// Position visible nodes as a vertical timeline for the current collapse state.
-function layoutTimeline(visible) {
-  const pos = {};
-  const yOf = {};
-  const spineItems = visible
-    .filter((n) => n.type === "pr" || (n.type === "commit" && !n.group))
-    .sort(byTimeDesc);
-
-  let y = 0;
-  for (const item of spineItems) {
-    pos[item.id] = { x: 0, y };
-    yOf[item.id] = y;
-    y += ROW;
-    if (item.type === "pr" && expanded.has(item.id)) {
-      const members = visible.filter((n) => n.type === "commit" && n.group === item.id).sort(byTimeDesc);
-      for (const mc of members) {
-        pos[mc.id] = { x: MEM_X, y };
-        yOf[mc.id] = y;
-        y += MEMROW;
-      }
-      y += ROW * 0.25;
-    }
-  }
-
-  // decisions → right lane, near the y of their (resolved) target
-  const decideTarget = {};
-  graph.edges.filter((e) => e.rel === "decides").forEach((e) => (decideTarget[e.source] = resolve(e.target)));
-  const stackAt = {};
-  for (const n of visible.filter((n) => n.type === "decision")) {
-    const tgt = decideTarget[n.id];
-    const baseY = tgt != null && yOf[tgt] != null ? yOf[tgt] : 0;
-    const k = stackAt[baseY] || 0;
-    pos[n.id] = { x: DEC_X, y: baseY + k * MEMROW };
-    stackAt[baseY] = k + 1;
-  }
-
-  const focus = visible.find((n) => n.type === "focus");
-  if (focus) pos[focus.id] = { x: -210, y: -ROW * 1.1 };
-  return pos;
-}
 
 function nodeData(n) {
-  if (n.type === "pr") {
+  const deg = degreeOf(n.id);
+  if (isGroup(n)) {
     const open = expanded.has(n.id);
-    return { id: n.id, type: "pr", label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}` };
+    return { id: n.id, type: n.type, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}`, deg };
   }
-  return { id: n.id, type: n.type, label: n.label, milestone: n.milestone ? 1 : 0 };
+  if (n.type === "module") return { id: n.id, type: "module", label: n.label, size: 16 + Math.min(n.count, 8) * 4, deg };
+  if (n.type === "concept") return { id: n.id, type: "concept", label: n.label, deg };
+  return { id: n.id, type: n.type, label: n.label, milestone: n.milestone ? 1 : 0, deg };
 }
 
-// Build cytoscape elements for the current collapse state, re-pointing any edge
-// that crosses into a collapsed group to the group node (and dropping internal ones).
-function computeElements() {
-  const visible = graph.nodes.filter(isVisible);
-  const pos = layoutTimeline(visible);
+let _deg = null;
+function degreeOf(id) {
+  if (!_deg) {
+    _deg = {};
+    for (const e of graph.edges) {
+      const s = resolve(e.source);
+      const t = resolve(e.target);
+      _deg[s] = (_deg[s] || 0) + 1;
+      _deg[t] = (_deg[t] || 0) + 1;
+    }
+  }
+  return _deg[id] || 0;
+}
 
+function computeElements() {
+  _deg = null; // recompute per collapse-state
+  const visible = graph.nodes.filter(isVisible);
+  const present = new Set(visible.map((n) => n.id));
   const seen = new Set();
   const edges = [];
   for (const e of graph.edges) {
     const s = resolve(e.source);
     const t = resolve(e.target);
-    if (s === t) continue;
+    if (s === t || !present.has(s) || !present.has(t)) continue;
     const key = `${s}>${t}:${e.rel}`;
     if (seen.has(key)) continue;
     seen.add(key);
     edges.push({ data: { id: `e${edges.length}`, source: s, target: t, rel: e.rel } });
   }
-
-  return [
-    ...visible.map((n) => ({ data: nodeData(n), position: pos[n.id] || { x: 0, y: 0 } })),
-    ...edges,
-  ];
+  return [...visible.map((n) => ({ data: nodeData(n) })), ...edges];
 }
 
 function renderGraph() {
   cy = cytoscape({
     container: $("#cy"),
     elements: computeElements(),
-    layout: { name: "preset" },
-    minZoom: 0.25,
-    maxZoom: 2.5,
+    minZoom: 0.15,
+    maxZoom: 3,
     wheelSensitivity: 0.3,
     style: graphStyle(),
   });
-
-  focusTop();
-  cy.on("tap", 'node[type="pr"]', (evt) => togglePr(evt.target.id()));
-  cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"]', (evt) => openPanel(evt.target));
+  runLayout();
+  cy.on("tap", 'node[type="pr"], node[type="segment"]', (evt) => toggleGroup(evt.target.id()));
+  cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"], node[type="module"], node[type="concept"]', (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
     if (evt.target === cy) closePanel();
   });
@@ -182,21 +149,34 @@ function renderGraph() {
   cy.on("mouseout", "node", clearHighlight);
 }
 
-function togglePr(id) {
-  expanded.has(id) ? expanded.delete(id) : expanded.add(id);
-  const pan = cy.pan();
-  const zoom = cy.zoom();
-  cy.elements().remove();
-  cy.add(computeElements());
-  cy.layout({ name: "preset" }).run();
-  cy.pan(pan);
-  cy.zoom(zoom);
+function runLayout(randomize = true) {
+  const opts = {
+    name: "fcose",
+    quality: "default",
+    animate: true,
+    animationDuration: 600,
+    randomize,
+    fit: true,
+    padding: 60,
+    nodeSeparation: 130,
+    idealEdgeLength: 95,
+    nodeRepulsion: 7000,
+    gravity: 0.22,
+    gravityRange: 3.2,
+    numIter: 1800,
+  };
+  try {
+    cy.layout(opts).run();
+  } catch {
+    cy.layout({ name: "cose", animate: true, fit: true, padding: 60, nodeRepulsion: 12000, idealEdgeLength: 95 }).run();
+  }
 }
 
-// Park the viewport at the top of the timeline (newest), readable at 1:1.
-function focusTop() {
-  cy.zoom(1);
-  cy.pan({ x: cy.width() / 2, y: ROW * 1.6 });
+function toggleGroup(id) {
+  expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+  cy.elements().remove();
+  cy.add(computeElements());
+  runLayout(false);
 }
 
 function graphStyle() {
@@ -205,93 +185,121 @@ function graphStyle() {
       selector: "node",
       style: {
         label: "data(label)",
-        color: "#c9d4ec",
-        "font-family": "IBM Plex Sans, system-ui, sans-serif",
-        "font-size": 12,
-        "text-outline-color": "#05060a",
-        "text-outline-width": 2,
-        "min-zoomed-font-size": 8,
+        color: SLATE,
+        "font-family": "Inter, system-ui, sans-serif",
+        "font-size": 11,
+        "text-outline-color": "#f6f9fc",
+        "text-outline-width": 2.5,
+        "min-zoomed-font-size": 9,
       },
     },
-    // PR group: a chip on the spine, label inside, click to expand
     {
-      selector: 'node[type="pr"]',
+      selector: 'node[type="pr"], node[type="segment"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(205,216,240,0.10)",
+        "background-color": "#ffffff",
         "border-width": 1.5,
-        "border-color": TYPE.pr.color,
-        color: "#e7ecf7",
+        "border-color": ACCENT,
+        color: INK,
         width: "label",
         height: "label",
         padding: 11,
         "text-valign": "center",
         "text-halign": "center",
-        "text-max-width": 320,
+        "text-max-width": 250,
         "text-wrap": "ellipsis",
         "font-weight": 600,
+        "font-size": 12,
+        "text-outline-width": 0,
       },
     },
     {
-      selector: 'node[type="commit"]',
+      selector: 'node[type="module"]',
       style: {
-        width: 11,
-        height: 11,
-        shape: "ellipse",
-        "background-color": TYPE.commit.color,
-        "text-valign": "center",
-        "text-halign": "right",
-        "text-margin-x": 9,
-        "text-max-width": 240,
+        shape: "round-rectangle",
+        "background-color": "#eef1f6",
+        "border-width": 1,
+        "border-color": "#c8d0da",
+        width: "data(size)",
+        height: "data(size)",
+        label: "data(label)",
+        color: "#5b6675",
+        "font-family": "IBM Plex Mono, monospace",
+        "font-size": 10,
+        "text-valign": "bottom",
+        "text-margin-y": 4,
+        "text-max-width": 150,
         "text-wrap": "ellipsis",
-        "font-size": 11,
       },
     },
     {
-      selector: 'node[type="commit"][milestone = 1]',
-      style: { width: 16, height: 16, "border-width": 3, "border-color": TYPE.decision.color, "border-opacity": 0.7 },
+      selector: 'node[type="concept"]',
+      style: {
+        shape: "round-rectangle",
+        "background-color": "rgba(99,91,255,0.08)",
+        "border-width": 1,
+        "border-color": ACCENT,
+        color: "#5249e0",
+        width: "label",
+        height: "label",
+        padding: 8,
+        "text-valign": "center",
+        "text-halign": "center",
+        "font-size": 11,
+        "font-weight": 500,
+        "text-outline-width": 0,
+      },
     },
     {
       selector: 'node[type="decision"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(255,206,106,0.14)",
-        "border-width": 1.5,
-        "border-color": TYPE.decision.color,
-        color: TYPE.decision.color,
+        "background-color": "#ffffff",
+        "border-width": 1,
+        "border-color": LINE,
+        color: SLATE,
         width: "label",
         height: "label",
         padding: 9,
         "text-valign": "center",
         "text-halign": "center",
-        "text-max-width": 200,
-        "text-wrap": "wrap",
+        "text-max-width": 180,
+        "text-wrap": "ellipsis",
         "font-size": 11,
+        "text-outline-width": 0,
       },
     },
     {
-      selector: 'node[type="focus"]',
+      selector: 'node[type="commit"]',
       style: {
-        shape: "star",
-        width: 28,
-        height: 28,
-        "background-color": TYPE.focus.color,
-        "text-valign": "center",
-        "text-halign": "left",
-        "text-margin-x": -12,
-        color: TYPE.focus.color,
-        "font-weight": 600,
+        width: 8,
+        height: 8,
+        shape: "ellipse",
+        "background-color": DOT,
+        color: "#697386",
+        "text-max-width": 170,
+        "text-wrap": "ellipsis",
+        "font-size": 10,
       },
     },
-    { selector: "edge", style: { "curve-style": "bezier", width: 1.4, opacity: 0.55, "line-color": "#4a5878" } },
-    { selector: 'edge[rel="parent"]', style: { "line-color": "rgba(127,212,255,0.55)", width: 2.2, opacity: 0.8 } },
-    { selector: 'edge[rel="decides"]', style: { "line-color": TYPE.decision.color, "line-style": "dashed", opacity: 0.55 } },
-    { selector: 'edge[rel="supersedes"]', style: { "line-color": "#c8a8ff", "line-style": "dotted", width: 1.8, opacity: 0.8 } },
-    { selector: 'edge[rel="focuses"]', style: { "line-color": TYPE.focus.color, "line-style": "dashed", opacity: 0.55 } },
-    { selector: ".dim", style: { opacity: 0.07, "text-opacity": 0 } },
-    { selector: "node:selected", style: { "border-width": 4, "border-color": "#e7ecf7", "border-opacity": 0.5 } },
-    { selector: "node.hot", style: { "text-opacity": 1 } },
-    { selector: "edge.hot", style: { opacity: 1, width: 2.6, "line-color": "#aebfe4" } },
+    { selector: 'node[type="commit"][milestone = 1]', style: { width: 12, height: 12, "border-width": 2.5, "border-color": ACCENT, color: INK } },
+    {
+      selector: 'node[type="focus"]',
+      style: { shape: "star", width: 22, height: 22, "background-color": ACCENT, color: ACCENT, "font-weight": 600 },
+    },
+    { selector: "edge", style: { "curve-style": "bezier", width: 1, opacity: 0.85, "line-color": LINE } },
+    { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 1.6 } },
+    { selector: 'edge[rel="touches"]', style: { "line-color": "#dfe4ea", width: 1 } },
+    { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },
+    { selector: 'edge[rel="references"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.5 } },
+    { selector: 'edge[rel="supersedes"]', style: { "line-color": ACCENT, "line-style": "dotted", width: 1.6, opacity: 0.7 } },
+    { selector: 'edge[rel="mentions"]', style: { "line-color": "#cdd0f5", "line-style": "dashed", opacity: 0.7 } },
+    { selector: 'edge[rel="focuses"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.6 } },
+    { selector: ".dim", style: { opacity: 0.1, "text-opacity": 0.15 } },
+    { selector: "node:selected", style: { "border-width": 2.5, "border-color": ACCENT } },
+    { selector: "node.hot", style: { "text-opacity": 1, "z-index": 99 } },
+    { selector: "edge.hot", style: { opacity: 1, width: 2.2, "line-color": ACCENT } },
+    { selector: "node.search-hit", style: { "border-width": 3, "border-color": ACCENT, "text-opacity": 1 } },
   ];
 }
 
@@ -304,12 +312,53 @@ function clearHighlight() {
   cy.elements().removeClass("dim hot");
 }
 
+/* ---------- search: jump to any node ---------- */
+function setupSearch() {
+  const input = $("#q");
+  input.addEventListener("input", () => runSearch(input.value));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = "";
+      runSearch("");
+      input.blur();
+    }
+  });
+}
+function runSearch(raw) {
+  const q = raw.trim().toLowerCase();
+  cy.elements().removeClass("dim hot search-hit");
+  if (!q) {
+    cy.fit(undefined, 60);
+    return;
+  }
+  const matched = graph.nodes.filter((n) => (n.label || "").toLowerCase().includes(q) || n.id.toLowerCase().includes(q));
+  // expand clusters that contain matching commits, so they're navigable
+  let changed = false;
+  for (const n of matched) {
+    if (n.type === "commit" && n.group && !expanded.has(n.group)) {
+      expanded.add(n.group);
+      changed = true;
+    }
+  }
+  if (changed) {
+    cy.elements().remove();
+    cy.add(computeElements());
+    runLayout(false);
+  }
+  const ids = new Set(matched.map((n) => resolve(n.id)));
+  const hits = cy.nodes().filter((n) => ids.has(n.id()));
+  if (!hits.length) return;
+  cy.elements().addClass("dim");
+  hits.removeClass("dim").addClass("search-hit");
+  hits.neighborhood().removeClass("dim");
+  cy.animate({ fit: { eles: hits, padding: 140 } }, { duration: 320 });
+}
+
 function openPanel(node) {
   const id = node.id();
   const type = node.data("type");
   let kicker = type;
   let html = "";
-
   if (type === "commit") {
     const n = nodeById(id) || {};
     kicker = "commit";
@@ -321,11 +370,18 @@ function openPanel(node) {
     const d = spine.decisions.find((x) => x.id === id.replace(/^adr:/, ""));
     kicker = "decision";
     html = d ? d.html : "";
+  } else if (type === "module") {
+    kicker = "module";
+    const touched = node.connectedEdges('[rel="touches"]').connectedNodes('[type="pr"], [type="segment"]');
+    const list = touched.map((c) => `<li>${esc((c.data("label") || "").replace(/^[▸▾]\s*/, ""))}</li>`).join("");
+    html = `<h1>${esc(node.data("label"))}</h1><p class="muted">Touched by ${touched.length} clusters:</p><ul>${list}</ul>`;
+  } else if (type === "concept") {
+    kicker = "concept";
+    html = `<h1>${esc(node.data("label"))}</h1><p class="muted">A shared-language term. See it referenced across the decisions it links.</p>`;
   } else if (type === "focus") {
     kicker = "current focus";
     html = spine.journal ?? "";
   }
-
   const panel = $("#panel");
   panel.innerHTML = `
     <button class="panel-close" aria-label="Close">×</button>
@@ -354,9 +410,7 @@ function esc(s) {
 }
 
 function renderLegend() {
-  $("#legend").innerHTML = Object.entries(TYPE)
-    .map(([, v]) => `<span class="leg"><i style="background:${v.color}"></i>${v.label}</span>`)
-    .join("");
+  $("#legend").innerHTML = LEGEND.map((v) => `<span class="leg"><i style="background:${v.c}"></i>${v.label}</span>`).join("");
 }
 
 /* ---------- docs mode: three-pane (sidebar · content · TOC) ---------- */
@@ -389,8 +443,6 @@ function renderDoc(id) {
   $("#main").scrollTop = 0;
   buildToc(id);
 }
-
-// Generate the on-this-page rail from the rendered headings (ADR-0005).
 function buildToc(id) {
   const toc = $("#toc");
   const sel = id === "decisions" ? "article h1" : "article h2, article h3";
@@ -418,21 +470,6 @@ function buildToc(id) {
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     })
   );
-}
-
-/* ---------- starfield ---------- */
-function makeStars() {
-  const layer = document.createElement("div");
-  layer.className = "star-dots";
-  const shadows = [];
-  for (let i = 0; i < 170; i++) {
-    const x = Math.floor(Math.random() * 2600);
-    const y = Math.floor(Math.random() * 1700);
-    const a = (0.2 + Math.random() * 0.75).toFixed(2);
-    shadows.push(`${x}px ${y}px rgba(255,255,255,${a})`);
-  }
-  layer.style.boxShadow = shadows.join(",");
-  $(".stars").appendChild(layer);
 }
 
 boot();

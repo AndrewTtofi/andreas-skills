@@ -29,12 +29,15 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     markdown: d.markdown,
   }));
   const focus = s.journal ? extractFocus(s.journal) : null;
+  let groupOf = new Map();
 
   if (git.available && git.commits.length) {
     const commits = git.commits; // newest-first
     const shaSet = new Set(commits.map((c) => c.sha));
     const milestones = extractHistoryMilestones(s.journal);
-    const { prNodes, groupOf } = clusterByPullRequest(commits);
+    const clustered = clusterCommits(commits);
+    const groupNodes = clustered.groupNodes;
+    groupOf = clustered.groupOf;
 
     for (const c of commits) {
       const milestone = matchMilestone(c, milestones);
@@ -54,7 +57,7 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
         if (shaSet.has(p)) edges.push({ source: `commit:${c.sha}`, target: `commit:${p}`, rel: "parent" });
       }
     }
-    for (const pr of prNodes) nodes.push(pr);
+    for (const gn of groupNodes) nodes.push(gn);
 
     for (const d of decisions) {
       nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date });
@@ -82,14 +85,103 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     }
   }
 
+  // --- non-sequential "brain" edges (.spine/decisions/0009) ---
+  addReferenceEdges(decisions, edges);
+  addConceptNodes(s.context, decisions, nodes, edges);
+  if (git.available && git.commits.length) addModuleHubs(git.commits, groupOf, nodes, edges);
+
   return { nodes, edges };
 }
 
-// Cluster commits by the pull request they landed in. A `Merge pull request #N`
-// commit becomes a `pr` group node; its members are the merge plus the branch
-// commits (reachable from the merge's 2nd parent, not its 1st). See
-// .spine/decisions/0004. Returns { prNodes, groupOf: Map<sha, "pr:N"> }.
-function clusterByPullRequest(commits) {
+// ADR ↔ ADR references from [[wikilinks]] (excluding pairs already superseded).
+function addReferenceEdges(decisions, edges) {
+  const superseded = new Set(edges.filter((e) => e.rel === "supersedes").map((e) => `${e.source}>${e.target}`));
+  const seen = new Set();
+  for (const d of decisions) {
+    for (const m of (d.markdown || "").matchAll(/\[\[(\d{4})[^\]]*\]\]/g)) {
+      const tgt = decisions.find((x) => x.id !== d.id && x.id.startsWith(m[1]));
+      if (!tgt) continue;
+      const key = `${d.nodeId}>${tgt.nodeId}`;
+      if (superseded.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ source: d.nodeId, target: tgt.nodeId, rel: "references" });
+    }
+  }
+}
+
+// Concept nodes from context.md's Language section, linked to the ADRs that name
+// them — but only when shared by ≥2 ADRs (no noise).
+function addConceptNodes(context, decisions, nodes, edges) {
+  for (const term of conceptTerms(context)) {
+    const re = new RegExp(`\\b${escapeRe(term)}\\b`, "i");
+    const mentioned = decisions.filter((d) => re.test(d.markdown));
+    if (mentioned.length < 2) continue;
+    const id = `concept:${term.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    nodes.push({ id, type: "concept", label: term });
+    for (const d of mentioned) edges.push({ source: id, target: d.nodeId, rel: "mentions" });
+  }
+}
+
+function conceptTerms(context) {
+  if (!context) return [];
+  const sec = context.match(/##\s*Language\s*\n+([\s\S]*?)(?:\n##|$)/i);
+  if (!sec) return [];
+  const terms = [...sec[1].matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1].trim());
+  return [...new Set(terms)];
+}
+
+// Module hubs: a file/module touched by ≥2 clusters becomes a hub the clusters
+// connect through (the non-sequential "brain" signal). See .spine/decisions/0009.
+function addModuleHubs(commits, groupOf, nodes, edges) {
+  const moduleClusters = new Map(); // module -> Set(clusterId)
+  for (const c of commits) {
+    const cluster = groupOf.get(c.sha);
+    if (!cluster) continue;
+    for (const f of c.files || []) {
+      const mod = moduleOf(f);
+      if (!mod) continue;
+      if (!moduleClusters.has(mod)) moduleClusters.set(mod, new Set());
+      moduleClusters.get(mod).add(cluster);
+    }
+  }
+  for (const [mod, clusters] of moduleClusters) {
+    if (clusters.size < 2) continue;
+    const id = `mod:${mod}`;
+    nodes.push({ id, type: "module", label: mod, count: clusters.size });
+    for (const cl of clusters) edges.push({ source: cl, target: id, rel: "touches" });
+  }
+}
+
+// Meta/doc paths make poor hubs — nearly every PR edits the README, journal, or
+// manifests, so they connect everything and signal nothing. Exclude them to keep
+// the brain focused on code modules. See .spine/decisions/0009.
+const META = /(^|\/)(README|CONTRIBUTING|CLAUDE|CONTEXT|LICENSE|CHANGELOG)[^/]*$|^docs\/|^\.claude-plugin\/|^\.spine\//;
+
+// Map a file path to a meaningful code-module grouping (or null to exclude).
+function moduleOf(path) {
+  if (META.test(path)) return null;
+  const p = path.split("/");
+  if (p[0] === "skills" && p.length >= 2) return `skills/${p[1]}`;
+  if (p[0] === "dashboard" && p.length >= 2) {
+    if (p[1] === "public" && p.length >= 3) return "dashboard/public";
+    if (p[1] === "test") return "dashboard/test";
+    return `dashboard/${p[1]}`;
+  }
+  if (p[0] === "scripts") return "scripts";
+  if (p.length === 1) return null; // bare top-level files are usually config/meta
+  return p[0];
+}
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Partition every commit into a group so nothing is loose (.spine/decisions/0004,
+// 0006): `Merge pull request #N` commits become `pr` clusters (merge + branch
+// commits); each maximal run of non-merge mainline commits becomes a `segment`
+// cluster (the newest run = "Current branch"; older = "Direct to main").
+// Returns { groupNodes, groupOf: Map<sha, "pr:N"|"seg:x"> }.
+function clusterCommits(commits) {
   const bySha = new Map(commits.map((c) => [c.sha, c]));
   const reachable = (start) => {
     const seen = new Set();
@@ -102,17 +194,17 @@ function clusterByPullRequest(commits) {
     }
     return seen;
   };
+  const isPrMerge = (c) => c.parents.length >= 2 && /^Merge pull request #(\d+)/.test(c.subject);
 
-  const prNodes = [];
+  const groupNodes = [];
   const groupOf = new Map();
-  for (const c of commits) {
-    const m = c.subject.match(/^Merge pull request #(\d+)/);
-    if (!m || c.parents.length < 2) continue;
-    const number = Number(m[1]);
-    const [mainParent, branchTip] = c.parents;
-    const base = reachable(mainParent); // everything already on mainline
 
-    // Walk the branch: reachable from branchTip but not from mainParent.
+  // 1. PR clusters: merge + its branch commits.
+  for (const c of commits) {
+    if (!isPrMerge(c)) continue;
+    const number = Number(c.subject.match(/^Merge pull request #(\d+)/)[1]);
+    const [mainParent, branchTip] = c.parents;
+    const base = reachable(mainParent);
     const branch = [];
     const seen = new Set();
     const stack = [branchTip];
@@ -123,13 +215,40 @@ function clusterByPullRequest(commits) {
       if (!groupOf.has(s)) branch.push(s);
       for (const p of bySha.get(s).parents) stack.push(p);
     }
-
     const id = `pr:${number}`;
-    groupOf.set(c.sha, id); // the merge hides into its group
+    groupOf.set(c.sha, id);
     for (const s of branch) groupOf.set(s, id);
-    prNodes.push({ id, type: "pr", label: `#${number} · ${prTitle(c)}`, number, count: branch.length, time: c.date });
+    groupNodes.push({ id, type: "pr", label: `#${number} · ${prTitle(c)}`, number, count: branch.length, time: c.date });
   }
-  return { prNodes, groupOf };
+
+  // 2. Segment clusters: runs of non-merge commits along the first-parent chain.
+  const headSha = commits[0] && commits[0].sha;
+  const mainline = [];
+  const guard = new Set();
+  let cur = headSha;
+  while (cur && bySha.has(cur) && !guard.has(cur)) {
+    guard.add(cur);
+    mainline.push(bySha.get(cur));
+    cur = bySha.get(cur).parents[0];
+  }
+  let run = [];
+  const flush = () => {
+    if (!run.length) return;
+    const first = run[0]; // newest commit in the run
+    const id = `seg:${first.shortSha}`;
+    const isHead = run.some((c) => c.sha === headSha);
+    const label = isHead ? "Current branch" : `Direct to main · ${(first.date || "").slice(0, 10)}`;
+    groupNodes.push({ id, type: "segment", label, count: run.length, time: first.date });
+    for (const c of run) groupOf.set(c.sha, id);
+    run = [];
+  };
+  for (const c of mainline) {
+    if (isPrMerge(c) || groupOf.has(c.sha)) flush();
+    else run.push(c);
+  }
+  flush();
+
+  return { groupNodes, groupOf };
 }
 
 function prTitle(mergeCommit) {

@@ -7,14 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&family=Instrument+Serif&display=swap"
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
   <link rel="stylesheet" href="/styles.css" />
   <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+  <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+  <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
 </head>
 <body>
-  <div class="stars"></div>
 
   <header class="topbar">
     <div class="brand">
@@ -29,8 +31,9 @@
 
   <section id="graph-view" class="view">
     <div id="cy"></div>
+    <div class="search"><input id="q" type="search" placeholder="Search PRs, commits, files, decisions…" autocomplete="off" /></div>
     <div class="legend" id="legend"></div>
-    <div class="hint" id="hint">newest at top · scroll down through history · click a node to read it</div>
+    <div class="hint" id="hint">scroll to zoom · drag to pan · search to jump · click a cluster to expand</div>
     <aside id="panel" class="panel" hidden></aside>
   </section>
 
