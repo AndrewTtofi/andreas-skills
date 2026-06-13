@@ -28,9 +28,10 @@ exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-**Build slice 1** (see Build plan). Design is done: ADR
-[[0014-manifest-schema-validation-pure-module]] records the architecture; schema
-rules confirmed against the authoritative Claude Code spec.
+**Verify.** All 5 build slices landed; 22/22 `node:test` green; `validate.mjs`
+passes on the real repo (exit 0, surfacing the plugin.json license warning) and
+fails cleanly on author-as-string / malformed JSON / missing marketplace. CI-on-PR
+(criterion 11) is wired and runs locally — to be confirmed live on the PR at ship.
 
 ## Build plan (slices) — TDD, smallest vertical slices
 
@@ -54,21 +55,21 @@ rules confirmed against the authoritative Claude Code spec.
 
 ## Acceptance criteria (active work)
 
-- [ ] 1. `plugin.json` `author` as a bare string → **fails** (exit 1), message names "author must be an object with a name".
-- [ ] 2. `plugin.json` missing/empty `name`/`description`/`version` → fails, field-specific.
-- [ ] 3. `author` object missing `name` → fails.
-- [ ] 4. `marketplace.json` missing/non-object `owner` or missing `owner.name` → fails.
-- [ ] 5. `plugins[]` entry missing `name` or `source` → fails.
-- [ ] 6. Malformed JSON in either manifest → fails with `invalid JSON in <file>` (no raw stack trace).
-- [ ] 7. Missing `marketplace.json` → fails.
-- [ ] 8. Current real manifests → **passes** (exit 0).
-- [ ] 9. Best-practice nits (missing `license`/`keywords`, plugin↔marketplace `version` mismatch) → **warnings**, build still passes.
-- [ ] 10. Schema logic in pure importable functions returning `{errors, warnings}`; `validate.mjs` only prints + sets exit code.
-- [ ] 11. `node --test` passes a suite covering 1–9; CI runs validate + tests under the required `validate` check.
-- [ ] 12. Pre-existing checks (skill frontmatter, README/skills wiring) remain and still pass.
-- [ ] 13. Non-kebab-case `name` (plugin.json, marketplace.json, or a `plugins[]` entry) → **fails** (install-blocker, pulled into scope after schema research).
-- [ ] 14. `keywords` present but not an array → fails; a `plugins[]` `source` that's a string not starting with `./` → fails.
-- [ ] 15. Schema logic lives in pure `scripts/manifest-schema.mjs` (no fs/exit); `validate.mjs` is the thin CLI wrapper that reads/parses/prints/exits.
+- [x] 1. `plugin.json` `author` as a bare string → **fails** (exit 1), message names "author must be an object with a name".
+- [x] 2. `plugin.json` missing/empty `name`/`description`/`version` → fails, field-specific.
+- [x] 3. `author` object missing `name` → fails.
+- [x] 4. `marketplace.json` missing/non-object `owner` or missing `owner.name` → fails.
+- [x] 5. `plugins[]` entry missing `name` or `source` → fails.
+- [x] 6. Malformed JSON in either manifest → fails with `invalid JSON in <file>` (no raw stack trace).
+- [x] 7. Missing `marketplace.json` → fails.
+- [x] 8. Current real manifests → **passes** (exit 0).
+- [x] 9. Best-practice nits (missing `license`/`keywords`, plugin↔marketplace `version` mismatch) → **warnings**, build still passes.
+- [x] 10. Schema logic in pure importable functions returning `{errors, warnings}`; `validate.mjs` only prints + sets exit code.
+- [x] 11. `node --test` passes a suite covering 1–9; CI runs validate + tests under the required `validate` check.
+- [x] 12. Pre-existing checks (skill frontmatter, README/skills wiring) remain and still pass.
+- [x] 13. Non-kebab-case `name` (plugin.json, marketplace.json, or a `plugins[]` entry) → **fails** (install-blocker, pulled into scope after schema research).
+- [x] 14. `keywords` present but not an array → fails; a `plugins[]` `source` that's a string not starting with `./` → fails.
+- [x] 15. Schema logic lives in pure `scripts/manifest-schema.mjs` (no fs/exit); `validate.mjs` is the thin CLI wrapper that reads/parses/prints/exits.
 
 ## Prior candidate follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
