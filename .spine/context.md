@@ -22,9 +22,20 @@ coding agent to work like a senior engineer and not lose the plot.
   installable plugin. `author` must be an **object** (`{name}`).
 - `.claude-plugin/marketplace.json` — marketplace wrapper so the plugin installs
   via `/plugin marketplace add` + `/plugin install spine@spine`.
-- `scripts/validate.mjs` — the **test harness**. Enforces structural invariants:
-  every skill in `plugin.json` exists, has valid frontmatter (name == folder),
-  and is wired into `README.md` + `skills/README.md`; plus plugin metadata.
+- `scripts/validate.mjs` — the **test harness** + CLI wrapper. Enforces
+  structural invariants: every skill in `plugin.json` exists, has valid
+  frontmatter (name == folder), and is wired into `README.md` +
+  `skills/README.md`. Reads both manifests, parses JSON with clean errors, then
+  delegates shape-checking to `manifest-schema.mjs` and prints a **two-tier**
+  report (errors fail, warnings inform). See
+  [[0014-manifest-schema-validation-pure-module]].
+- `scripts/manifest-schema.mjs` — **pure** manifest validators
+  (`validateManifest`, `validateMarketplace`): parsed object → `{errors,
+  warnings}`, no fs/exit. Encodes the Claude Code install-blocker rules (author/
+  owner must be objects, name kebab-case, keywords array, source `./`-prefixed,
+  …). Unit-tested hermetically in `manifest-schema.test.mjs` (`node --test`).
+- `package.json` (root) — minimal, zero-dep; `test: node --test` scoped to the
+  validator tests (the `dashboard/` package keeps its own suite).
 - `dashboard/` — a separate zero-dep npm package, `spine-dashboard`: a read-only
   local web view of any repo's `.spine/`. Backend modules (Node ESM):
   - `spine-reader.mjs` — pure read of `.spine/` → structured data.
@@ -95,3 +106,12 @@ for the dashboard's filter bar. See [[0010-labels-as-a-queryable-layer]].
 
 **WIP anchor**: the "Current branch" cluster, styled as the always-visible
 reference point for current work-in-progress.
+
+**Install-blocker**: a manifest mistake that is valid JSON but causes
+`/plugin install` to fail (e.g. `author` as a string, a non-kebab-case `name`,
+`keywords` as a string). `validate.mjs` fails the build on these; lesser
+best-practice issues are warnings. See
+[[0014-manifest-schema-validation-pure-module]].
+
+**Two-tier validation**: the validator's report split into `errors` (fail the
+build, exit 1) and `warnings` (inform, don't fail).

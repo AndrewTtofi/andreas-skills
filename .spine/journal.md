@@ -28,9 +28,29 @@ exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-**Design** the manifest-schema validation: confirm the authoritative Claude Code
-`plugin.json`/`marketplace.json` rules, then define the pure
-`validateManifest`/`validateMarketplace` function shapes and the test fixtures.
+**Build slice 1** (see Build plan). Design is done: ADR
+[[0014-manifest-schema-validation-pure-module]] records the architecture; schema
+rules confirmed against the authoritative Claude Code spec.
+
+## Build plan (slices) — TDD, smallest vertical slices
+
+1. **Pure `validateManifest(plugin)`** in `scripts/manifest-schema.mjs` +
+   `manifest-schema.test.mjs`: name present+kebab-case, description/version
+   present (repo convention), author-if-present object w/ name, keywords-if-present
+   array. Returns `{errors, warnings}`. (criteria 1,2,3,9-part)
+2. **Pure `validateMarketplace(marketplace)`**: name kebab-case, owner object w/
+   name, plugins non-empty array, each entry name kebab-case + source present
+   (string ⇒ `./`-prefixed), author-if-present object. (criteria 4,5,13,14)
+3. **Wire into `validate.mjs`**: clean JSON read/parse (missing/malformed →
+   readable error), missing `marketplace.json` → error, call both validators,
+   merge with existing checks, two-tier print + exit. (criteria 6,7,8,10,12)
+4. **Cross-checks → warnings**: plugin↔marketplace `version` mismatch, missing
+   `license`/`keywords`. (criterion 9)
+5. **CI + root scaffold**: root `package.json` (`test: node --test`, scoped to
+   validator tests), extend the `validate` workflow to run validate + tests.
+   (criterion 11)
+
+## Acceptance criteria (active work)
 
 ## Acceptance criteria (active work)
 
@@ -46,6 +66,9 @@ exact schema rules confirmed against the authoritative spec in `design`.
 - [ ] 10. Schema logic in pure importable functions returning `{errors, warnings}`; `validate.mjs` only prints + sets exit code.
 - [ ] 11. `node --test` passes a suite covering 1–9; CI runs validate + tests under the required `validate` check.
 - [ ] 12. Pre-existing checks (skill frontmatter, README/skills wiring) remain and still pass.
+- [ ] 13. Non-kebab-case `name` (plugin.json, marketplace.json, or a `plugins[]` entry) → **fails** (install-blocker, pulled into scope after schema research).
+- [ ] 14. `keywords` present but not an array → fails; a `plugins[]` `source` that's a string not starting with `./` → fails.
+- [ ] 15. Schema logic lives in pure `scripts/manifest-schema.mjs` (no fs/exit); `validate.mjs` is the thin CLI wrapper that reads/parses/prints/exits.
 
 ## Prior candidate follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
