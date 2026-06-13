@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-06-13
+- **Labels:** dashboard, graph, ux
 - Supersedes the timeline layout of [[0003-vertical-timeline-via-cytoscape-preset]]
   (the clustering of [[0006-cluster-every-commit-into-segments]] still holds as
   node grouping).

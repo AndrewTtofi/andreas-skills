@@ -22,6 +22,7 @@ that gap with a focused interview.
    testable (e.g. "Given X, when Y, then Z").
 5. **Write to the Spine.** Update `journal.md`: set *Current focus* to this work,
    *Next step* to the first build action, and append the acceptance criteria.
+   Tag this work with a few **labels** (area + topic) so the path stays queryable.
 6. **Confirm** the criteria with the user before any building begins.
 
 ## Spine I/O

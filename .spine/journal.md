@@ -19,8 +19,8 @@ filterable.
 
 ## Next step
 
-`build` slice 3: Spine + skills convention — `adr-format.md` `labels:`, journal
-template `{labels}`, align/design/remember SKILL.md, `CLAUDE.md`, backfill `.spine/`.
+`verify` + `ship`: full suite + validator green; screenshots; then open the PR
+for iteration 5 (labels + filter bar + WIP + skills convention).
 
 ## Build plan (iteration 5)
 
@@ -60,19 +60,20 @@ WIP anchor:
       exempt from filters (always visible as "now"). (/tmp/filter-ux.png)
 
 Spine + skills convention:
-- [ ] `skills/design/adr-format.md` ADR template includes a `labels:` field.
-- [ ] `skills/init/templates/journal.md` History format is `- <date> {labels} — …`.
-- [ ] `align`, `design`, `remember` SKILL.md instruct recording labels + dates.
-- [ ] `CLAUDE.md` documents the labels convention.
-- [ ] Our own `.spine/` ADRs + journal carry labels (dashboard shows them).
+- [x] `skills/design/adr-format.md` ADR template includes a `Labels:` field + guidance.
+- [x] `skills/init/templates/journal.md` History format is `- <date> {labels} — …`.
+- [x] `align`, `design`, `remember` SKILL.md instruct recording labels.
+- [x] `CLAUDE.md` documents the labels convention.
+- [x] Our own `.spine/` ADRs (0001–0011) + journal History carry labels — the
+      dashboard reads them (22 distinct labels).
 
 Cross-cutting:
-- [ ] `graph-builder` unit tests for derived + explicit labels and the time range.
-- [ ] `node --test` + `node scripts/validate.mjs` green; zero new deps.
+- [x] `graph-builder` unit tests for derived + explicit labels (slice 1).
+- [x] `node --test` 42/42 + `node scripts/validate.mjs` green; zero new deps.
 
 ## History
 
-- 2026-06-13 — **PR #9 (merged, `7472942`)**: the dashboard **brain** — every
+- 2026-06-13 {dashboard, graph, ux} — **PR #9 (merged, `7472942`)**: the dashboard **brain** — every
   commit clustered (segments + in-flight "Current branch")
   [[0006-cluster-every-commit-into-segments]], Stripe-grade light reskin
   [[0008-stripe-grade-light-design-system]], and the force-directed knowledge
@@ -81,13 +82,13 @@ Cross-cutting:
   [[0007-refined-dark-professional-palette]] superseded by 0008.) **Lesson:**
   verify a PR is still open before claiming a push lands in it — work committed
   after #8 merged orphaned on the branch until gathered into #9.
-- 2026-06-13 — **PR #8 (merged)**: PR-clustering + three-pane enterprise docs
+- 2026-06-13 {dashboard, graph, docs} — **PR #8 (merged)**: PR-clustering + three-pane enterprise docs
   [[0004-cluster-commits-by-pull-request]], [[0005-docs-three-pane-with-generated-toc]].
-- 2026-06-13 — **PR #7 (merged, `df26c02`)**: v1.1 skills (ship/troubleshoot/
+- 2026-06-13 {skills, dashboard} — **PR #7 (merged, `df26c02`)**: v1.1 skills (ship/troubleshoot/
   new-skill) + `plugin.json` author fix + the first dashboard graph redesign
   (git-reader backbone, Spine overlay, vertical timeline). ADRs
   [[0001-git-history-as-commit-backbone]], [[0002-spine-overlays-the-commit-timeline]],
   [[0003-vertical-timeline-via-cytoscape-preset]]; spec
   `docs/specs/2026-06-13-dashboard-graph-redesign.md`.
-- 2026-06-13 — Seeded this `.spine/` via `init`; installed the plugin locally and
-  dogfooded the full spine lifecycle to produce the work above.
+- 2026-06-13 {spine, dogfood} — Seeded this `.spine/` via `init`; installed the
+  plugin locally and dogfooded the full spine lifecycle to produce the work above.

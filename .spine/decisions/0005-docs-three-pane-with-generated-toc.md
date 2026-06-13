@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-06-13
+- **Labels:** dashboard, docs, ux
 
 ## Context
 

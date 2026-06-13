@@ -35,7 +35,8 @@ after `align` and before `build`.
      any new shared-language terms.
    - Write one ADR per significant decision in `.spine/decisions/NNNN-title.md`
      using [adr-format.md](adr-format.md). Number `NNNN` as the next 4-digit
-     value after the highest existing ADR (start at `0001`).
+     value after the highest existing ADR (start at `0001`). Give each ADR
+     **labels** (area + topic) so decisions are filterable.
    - Write a build-ready slice breakdown and the next step to `journal.md`.
 7. **Confirm** the design with the user before building.
 
