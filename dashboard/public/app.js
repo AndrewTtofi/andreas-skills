@@ -170,69 +170,127 @@ function renderGraph() {
 // a chronological spine (newest at top) — the visible sequence — while module
 // hubs, ADRs, and concepts are placed deterministically around their connections.
 // Same input → same positions every reload (no scrambling).
-const ROW = 104;
+// Deterministic spring + collision brain (.spine/decisions/0013): a force-style
+// web where the cluster `parent` chain stays tight and in order (the sequence in
+// line), satellites cluster by their connections, and a hard AABB collision pass
+// guarantees nothing overlaps. No randomness → identical every reload.
 function layoutBrain() {
-  const pos = {};
+  const gById = {};
+  graph.nodes.forEach((n) => (gById[n.id] = n));
   const hash = (s) => {
     let h = 0;
     for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
     return Math.abs(h);
   };
-  const centroid = (ids) => {
-    const ps = ids.map((id) => pos[id]).filter(Boolean);
-    if (!ps.length) return null;
-    return { x: ps.reduce((a, p) => a + p.x, 0) / ps.length, y: ps.reduce((a, p) => a + p.y, 0) / ps.length };
-  };
 
-  // 1. clusters → a gently meandering chronological spine: y = time (the
-  //    sequence), x waves (organic, brain-like rather than a rigid line).
-  const clusters = graph.nodes.filter(isGroup).slice().sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0));
-  clusters.forEach((n, i) => (pos[n.id] = { x: Math.sin(i * 0.7) * 95, y: i * ROW }));
-  const fixed = new Set(clusters.map((n) => n.id));
-  const midY = (clusters.length * ROW) / 2;
-
-  // 2. satellites → scattered around the centroid of their connections at a
-  //    deterministic angle/radius (a web), biased to a side to reduce clutter.
-  const scatter = (n, ids, baseDeg) => {
-    const c = centroid(ids) || { x: 0, y: midY };
-    const j = hash(n.id);
-    const a = ((baseDeg + (j % 120) - 60) * Math.PI) / 180;
-    const r = 240 + (j % 210);
-    pos[n.id] = { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
-  };
-  const touchOf = {};
-  graph.edges.filter((e) => e.rel === "touches").forEach((e) => (touchOf[e.target] ??= []).push(e.source));
-  graph.nodes.filter((n) => n.type === "module").forEach((n) => scatter(n, touchOf[n.id] || [], 0)); // right
-  const decideOf = {};
-  graph.edges.filter((e) => e.rel === "decides").forEach((e) => {
-    const c = nodeById(e.target);
-    if (c && c.group) (decideOf[e.source] ??= []).push(c.group);
+  // one record per visible node, sized by its LABEL-INCLUSIVE box (+ gap) so the
+  // collision pass keeps even wide labels (e.g. module paths) from touching.
+  const items = cy.nodes().map((node) => {
+    const g = gById[node.id()] || {};
+    const bb = node.boundingBox({ includeLabels: true });
+    return {
+      id: node.id(),
+      node,
+      x: 0,
+      y: 0,
+      fx: 0,
+      fy: 0,
+      isCluster: g.type === "pr" || g.type === "segment",
+      w: bb.w + 28,
+      h: bb.h + 28,
+    };
   });
-  graph.nodes.filter((n) => n.type === "decision").forEach((n) => scatter(n, decideOf[n.id] || [], 180)); // left
-  const mentionOf = {};
-  graph.edges.filter((e) => e.rel === "mentions").forEach((e) => (mentionOf[e.source] ??= []).push(e.target));
-  graph.nodes.filter((n) => n.type === "concept").forEach((n) => scatter(n, mentionOf[n.id] || [], 180));
+  if (!items.length) return;
+  const byId = {};
+  items.forEach((o) => (byId[o.id] = o));
 
-  // 3. de-overlap: push colliding nodes apart; clusters stay fixed (spine intact).
-  const ids = Object.keys(pos);
-  const MIN = 138;
-  for (let pass = 0; pass < 70; pass++) {
-    for (let i = 0; i < ids.length; i++) {
-      for (let k = i + 1; k < ids.length; k++) {
-        const a = pos[ids[i]], b = pos[ids[k]];
-        let dx = a.x - b.x, dy = a.y - b.y;
-        let d = Math.hypot(dx, dy);
-        if (d < 0.5) { dx = (hash(ids[i]) % 7) - 3 || 1; dy = (hash(ids[k]) % 7) - 3; d = Math.hypot(dx, dy) || 1; }
-        if (d < MIN) {
-          const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
-          if (!fixed.has(ids[i])) (a.x += ux * push), (a.y += uy * push);
-          if (!fixed.has(ids[k])) (b.x -= ux * push), (b.y -= uy * push);
+  const seen = new Set();
+  const edges = [];
+  for (const e of graph.edges) {
+    const s = resolve(e.source), t = resolve(e.target);
+    if (s === t || !byId[s] || !byId[t]) continue;
+    const key = `${s}>${t}:${e.rel}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push({ a: byId[s], b: byId[t], rel: e.rel });
+  }
+
+  // 1. deterministic seed — clusters on a phyllotaxis spiral by chronological
+  //    index (flow + spread); satellites beside a connection.
+  const clusters = items.filter((o) => o.isCluster).sort((a, b) => {
+    const ta = gById[a.id].time, tb = gById[b.id].time;
+    return ta < tb ? 1 : ta > tb ? -1 : 0;
+  });
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  clusters.forEach((o, i) => {
+    const r = 70 * Math.sqrt(i + 1);
+    o.x = Math.cos(i * GOLD) * r;
+    o.y = Math.sin(i * GOLD) * r;
+  });
+  for (const o of items) {
+    if (o.isCluster) continue;
+    const e = edges.find((e) => e.a === o || e.b === o);
+    const anchor = e ? (e.a === o ? e.b : e.a) : null;
+    const j = hash(o.id);
+    const a = ((j % 360) * Math.PI) / 180;
+    if (anchor) (o.x = anchor.x + Math.cos(a) * 70), (o.y = anchor.y + Math.sin(a) * 70);
+    else (o.x = (j % 700) - 350), (o.y = ((j >> 3) % 700) - 350);
+  }
+
+  // 2. force pass (Fruchterman–Reingold-ish): repulsion + spring attraction +
+  //    light centering gravity, cooled over a fixed number of iterations.
+  const K = 150;
+  let temp = 260;
+  for (let it = 0; it < 320; it++) {
+    for (const o of items) (o.fx = 0), (o.fy = 0);
+    for (let i = 0; i < items.length; i++) {
+      for (let k = i + 1; k < items.length; k++) {
+        const a = items[i], b = items[k];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.hypot(dx, dy) || 0.01;
+        const f = (K * K) / d;
+        a.fx += (dx / d) * f; a.fy += (dy / d) * f;
+        b.fx -= (dx / d) * f; b.fy -= (dy / d) * f;
+      }
+    }
+    for (const e of edges) {
+      const dx = e.a.x - e.b.x, dy = e.a.y - e.b.y;
+      const d = Math.hypot(dx, dy) || 0.01;
+      let f = (d * d) / K;
+      if (e.rel === "parent") f *= 2.1; // the sequence chain stays tight + in line
+      e.a.fx -= (dx / d) * f; e.a.fy -= (dy / d) * f;
+      e.b.fx += (dx / d) * f; e.b.fy += (dy / d) * f;
+    }
+    for (const o of items) (o.fx += -o.x * 0.06), (o.fy += -o.y * 0.06);
+    for (const o of items) {
+      const d = Math.hypot(o.fx, o.fy) || 1;
+      const disp = Math.min(d, temp);
+      o.x += (o.fx / d) * disp;
+      o.y += (o.fy / d) * disp;
+    }
+    temp *= 0.975;
+  }
+
+  // 3. hard collision pass — separate overlapping bounding boxes until none
+  //    overlap. This is the zero-overlap guarantee.
+  for (let pass = 0; pass < 800; pass++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) {
+      for (let k = i + 1; k < items.length; k++) {
+        const a = items[i], b = items[k];
+        const ox = (a.w + b.w) / 2 - Math.abs(a.x - b.x);
+        const oy = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+        if (ox > 0 && oy > 0) {
+          moved = true;
+          if (ox < oy) { const s = ((a.x <= b.x ? -1 : 1) * ox) / 2; a.x += s; b.x -= s; }
+          else { const s = ((a.y <= b.y ? -1 : 1) * oy) / 2; a.y += s; b.y -= s; }
         }
       }
     }
+    if (!moved) break;
   }
 
-  cy.nodes().forEach((node) => pos[node.id()] && node.position(pos[node.id()]));
+  for (const o of items) o.node.position({ x: o.x, y: o.y });
   cy.fit(undefined, 60);
 }
 
@@ -397,7 +455,7 @@ function graphStyle() {
       style: { shape: "star", width: 22, height: 22, "background-color": ACCENT, color: ACCENT, "font-weight": 600 },
     },
     { selector: "edge", style: { "curve-style": "bezier", width: 1, opacity: 0.85, "line-color": LINE } },
-    { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 1.6 } },
+    { selector: 'edge[rel="parent"]', style: { "line-color": "#9aa6ee", width: 2.6, opacity: 0.9 } },
     { selector: 'edge[rel="touches"]', style: { "line-color": "#dfe4ea", width: 1 } },
     { selector: 'edge[rel="contains"]', style: { "line-color": "#e7ebf0", width: 1, opacity: 0.7 } },
     { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },

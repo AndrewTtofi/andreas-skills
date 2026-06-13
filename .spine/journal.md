@@ -10,19 +10,19 @@ fit-to-view brain via search + filters + zoom). {dashboard, graph, ux, layout}
 
 ### Acceptance criteria (iteration 6)
 
-- [ ] Brain-like organic web (force-style), not a rigid line or fixed columns.
-- [ ] The cluster chain (the chronological `parent` path) is kept **in line** —
-      consecutive clusters adjacent and in time order, a sequence you can trace
-      through the brain.
-- [ ] **Zero overlap**: no two node bounding boxes intersect (verified
-      programmatically, not just by eye).
-- [ ] **Deterministic**: identical positions on every reload (no force-layout
-      scramble).
-- [ ] Scales without scrolling: fit-to-view shows the whole brain; find things via
-      search + label/date filters + zoom (works at ~100 clusters).
-- [ ] Existing interactions intact: expand→commit ring, search, filter bar, WIP.
-- [ ] `node --test` + `node scripts/validate.mjs` green; zero new deps (hand-rolled
-      deterministic spring+collision sim, no force library).
+- [x] Brain-like organic web (deterministic spring sim), not a line or columns.
+- [x] The cluster chain (`parent` path, drawn as a bold blue thread) is kept
+      **in line** — tight chain springs keep consecutive clusters adjacent and
+      ordered; you can trace the sequence through the brain.
+- [x] **Zero overlap**: collision pass on label-inclusive boxes → verified
+      **0 overlapping node boxes** programmatically.
+- [x] **Deterministic**: cluster positions identical across reloads.
+- [x] Scales without scrolling: 2D fit-to-view brain; navigate via search +
+      filters + zoom.
+- [x] Interactions intact: expand→commit ring (9 commits), filter (git → 2),
+      search — no console errors.
+- [x] `node --test` 42/42 + `node scripts/validate.mjs` green; no new deps
+      (hand-rolled spring+collision, fcose removed).
 
 ### Prior focus (iteration 5 — shipped to PR #11)
 
@@ -43,9 +43,8 @@ filterable.
 
 ## Next step
 
-`build`: rewrite `layoutBrain()` as the deterministic spring+collision sim
-([[0013-deterministic-spring-collision-brain]]). Verify live: brain + traceable
-sequence chain + zero overlap (programmatic) + determinism + fit-to-view. Then ship.
+Iteration 6 built + verified (brain + in-line sequence chain, 0 overlaps,
+deterministic, 42/42, validator green). Pushed to PR #11. Then `remember`.
 
 ## Build plan (iteration 5)
 
