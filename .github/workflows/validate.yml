@@ -14,5 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate skill wiring
+      - name: Validate skill wiring + manifests
         run: node scripts/validate.mjs
+      - name: Run validator tests
+        run: npm test

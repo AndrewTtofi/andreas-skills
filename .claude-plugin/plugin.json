@@ -3,6 +3,7 @@
   "description": "A full-lifecycle engineering skill system unified by a project-memory Spine, so your coding agent works like a senior engineer from idea to production and never loses the plot.",
   "version": "1.1.0",
   "author": { "name": "Andreas Ttofi" },
+  "license": "MIT",
   "skills": [
     "./skills/init",
     "./skills/align",

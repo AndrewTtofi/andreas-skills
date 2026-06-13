@@ -11,14 +11,85 @@ overlap, identical every reload**, navigated by fit/zoom/**search + a filter bar
 (date range + **label** chips). Labels are a first-class queryable layer the skills
 themselves produce (ADR `Labels:`, journal `{labels}`). All of it was built by
 **dogfooding the spine lifecycle on this repo**, so `.spine/` here is both the
-memory and the worked example. Everything is merged to `main` (PRs #7–#11).
-Nothing is in flight.
+memory and the worked example. Everything is merged to `main` (PRs #7–#12); CI (`validate` workflow) + branch
+protection now gate `main`.
 
-No open focus.
+**Active ({tooling, validate, manifest, ci, tests}, confidence ~92%):** harden
+`scripts/validate.mjs` against the Claude Code **manifest schema**. Today it only
+checks truthiness, so `author: "string"` passes but silently blocks
+`/plugin install` (footgun noted in `conventions.md`), and `marketplace.json`
+isn't validated at all. Scope: enforce **core install-blocker** type/shape rules
+on **both** manifests, two tiers (errors fail / warnings inform), refactor the
+schema logic into pure importable functions (`validate.mjs` = thin CLI wrapper),
+add a `node:test` suite, and have CI run validate + tests. Out: full JSON-Schema
+deps, format-lint extras (semver/name-pattern/SPDX), the dashboard.
+Assumptions: malformed JSON → clean error; missing `marketplace.json` → error;
+exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-None pending. Candidate follow-ups (not committed to):
+**Await merge of PR #14** (manifest-schema hardening). Shipped; CI green
+(`validate` = validate.mjs + `npm test`, 8s); required check satisfied,
+mergeable. Leave the merge to the user.
+
+## Verification (2026-06-13)
+
+**Verdict: all 15 acceptance criteria MET.** Evidence:
+- `node --test scripts/` → **22 pass / 0 fail** (covers criteria 1–5, 9, 13–15
+  as pure-function tests; 10/15 = pure module imported directly).
+- `node scripts/validate.mjs` on the real repo → **exit 0**, all 9 skills `ok`,
+  one warning surfaced (`plugin.json: missing "license"`) → criteria 8, 9, 12.
+- CLI failure sweep (throwaway repo), each **exit 1** with a clean message:
+  author-as-string → `"author" must be an object … not a string` (C1); missing
+  version (C2); `author.name is required` (C3); owner-as-string (C4); entry
+  missing `source` (C5); `invalid JSON in marketplace.json: …` (C6, no stack
+  trace); `marketplace.json missing` (C7); non-kebab name (C13); `keywords` as
+  string + `source` not `./`-prefixed (C14).
+- `npm test` → exit 0; workflow runs validate + `npm test`; the required
+  `validate` check covers both (C11) — **live PR run confirmed at ship**.
+- Diff: +435/-17 across `scripts/` + `package.json` + workflow; no TODOs, stubs,
+  or dead code; `manifest-schema.mjs` is pure (no fs/exit), `validate.mjs` the
+  thin CLI wrapper (C10, C15).
+
+## Build plan (slices) — TDD, smallest vertical slices
+
+1. **Pure `validateManifest(plugin)`** in `scripts/manifest-schema.mjs` +
+   `manifest-schema.test.mjs`: name present+kebab-case, description/version
+   present (repo convention), author-if-present object w/ name, keywords-if-present
+   array. Returns `{errors, warnings}`. (criteria 1,2,3,9-part)
+2. **Pure `validateMarketplace(marketplace)`**: name kebab-case, owner object w/
+   name, plugins non-empty array, each entry name kebab-case + source present
+   (string ⇒ `./`-prefixed), author-if-present object. (criteria 4,5,13,14)
+3. **Wire into `validate.mjs`**: clean JSON read/parse (missing/malformed →
+   readable error), missing `marketplace.json` → error, call both validators,
+   merge with existing checks, two-tier print + exit. (criteria 6,7,8,10,12)
+4. **Cross-checks → warnings**: plugin↔marketplace `version` mismatch, missing
+   `license`/`keywords`. (criterion 9)
+5. **CI + root scaffold**: root `package.json` (`test: node --test`, scoped to
+   validator tests), extend the `validate` workflow to run validate + tests.
+   (criterion 11)
+
+## Acceptance criteria (active work)
+
+## Acceptance criteria (active work)
+
+- [x] 1. `plugin.json` `author` as a bare string → **fails** (exit 1), message names "author must be an object with a name".
+- [x] 2. `plugin.json` missing/empty `name`/`description`/`version` → fails, field-specific.
+- [x] 3. `author` object missing `name` → fails.
+- [x] 4. `marketplace.json` missing/non-object `owner` or missing `owner.name` → fails.
+- [x] 5. `plugins[]` entry missing `name` or `source` → fails.
+- [x] 6. Malformed JSON in either manifest → fails with `invalid JSON in <file>` (no raw stack trace).
+- [x] 7. Missing `marketplace.json` → fails.
+- [x] 8. Current real manifests → **passes** (exit 0).
+- [x] 9. Best-practice nits (missing `license`/`keywords`, plugin↔marketplace `version` mismatch) → **warnings**, build still passes.
+- [x] 10. Schema logic in pure importable functions returning `{errors, warnings}`; `validate.mjs` only prints + sets exit code.
+- [x] 11. `node --test` passes a suite covering 1–9; CI runs validate + tests under the required `validate` check.
+- [x] 12. Pre-existing checks (skill frontmatter, README/skills wiring) remain and still pass.
+- [x] 13. Non-kebab-case `name` (plugin.json, marketplace.json, or a `plugins[]` entry) → **fails** (install-blocker, pulled into scope after schema research).
+- [x] 14. `keywords` present but not an array → fails; a `plugins[]` `source` that's a string not starting with `./` → fails.
+- [x] 15. Schema logic lives in pure `scripts/manifest-schema.mjs` (no fs/exit); `validate.mjs` is the thin CLI wrapper that reads/parses/prints/exits.
+
+## Prior candidate follow-ups (not committed to):
 - Apply the collision pass to the **expanded** commit-ring too (a ring can
   currently overlap a neighbour; the default brain is overlap-free).
 - Surface more `concept` nodes (only "Spine" crosses the ≥2-ADR bar today).
@@ -26,6 +97,15 @@ None pending. Candidate follow-ups (not committed to):
 
 ## History
 
+- 2026-06-13 {tooling, validate, manifest, ci, tests} — **PR #14 (open)**: harden
+  `validate.mjs` against the Claude Code **manifest schema**. Pure
+  `manifest-schema.mjs` (`validateManifest`/`validateMarketplace`/`crossCheck` →
+  `{errors,warnings}`); `validate.mjs` becomes a thin two-tier CLI wrapper (errors
+  fail, warnings inform); both manifests checked (author/owner must be objects,
+  name kebab-case, keywords array, source `./`-prefixed, clean JSON errors). Root
+  `package.json` + CI now runs validate + `node:test` (22/22). First feature run
+  through the full align→design→build→verify→ship gate with CI + branch
+  protection live. [[0014-manifest-schema-validation-pure-module]].
 - 2026-06-13 {skills, align, init, gate, dogfood} — **PR #12 (merged, `4f02c64`)**: the
   **contracting gate**. `align` reworked into an extensive, certainty-gated
   intent interview — 12 interrogation dimensions, an explicit confidence score,
