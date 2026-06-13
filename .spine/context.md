@@ -32,14 +32,19 @@ coding agent to work like a senior engineer and not lose the plot.
     injectable `run` for tests); the commit backbone. See
     [[0001-git-history-as-commit-backbone]].
   - `graph-builder.mjs` — overlays the Spine onto the commit timeline →
-    `{nodes, edges}`. See [[0002-spine-overlays-the-commit-timeline]].
+    `{nodes, edges}`, and clusters commits into `pr` group nodes by the pull
+    request they landed in (DAG reachability). See
+    [[0002-spine-overlays-the-commit-timeline]],
+    [[0004-cluster-commits-by-pull-request]].
   - `markdown.mjs` — markdown → HTML.
   - `server.mjs` — composes the above; serves `/api/spine`, `/api/graph`, static
     `public/`.
   - `public/` — frontend (vanilla JS + Cytoscape via CDN). Graph mode renders a
     vertical timeline via Cytoscape `preset` layout
-    ([[0003-vertical-timeline-via-cytoscape-preset]]); Docs mode renders the
-    Spine files.
+    ([[0003-vertical-timeline-via-cytoscape-preset]]) with PR groups collapsed by
+    default and expandable to commits; Docs mode is a three-pane layout (sectioned
+    sidebar · constrained content · generated TOC),
+    [[0005-docs-three-pane-with-generated-toc]].
 - `docs/` — `plans/`, `specs/`, and `launch/` (unpublished launch material).
 - `.spine/` — this memory store: `context.md`, `conventions.md`, `journal.md`,
   `decisions/`. The connective tissue across phases and sessions.
@@ -63,3 +68,8 @@ dashboard graph's primary, ordered, dependency-bearing spine.
 
 **Overlay**: Spine meaning (ADRs, focus) attached onto commits in the graph —
 `decision` nodes, the `focus` node, and milestone annotations on commits.
+
+**PR group**: a `pr` node clustering the commits that landed in one pull request
+(the merge + its branch commits). The default unit shown in the graph.
+
+**Loose commit**: a mainline commit not part of any merged PR; rendered standalone.
