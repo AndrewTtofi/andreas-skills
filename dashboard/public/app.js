@@ -12,6 +12,11 @@ const DOCS = [
   ["journal", "Journal"],
   ["decisions", "Decisions"],
 ];
+const DOC_SECTIONS = [
+  { title: "Overview", items: ["architecture", "conventions", "journal"] },
+  { title: "Knowledge", items: ["decisions"] },
+];
+const docLabel = (id) => (DOCS.find((d) => d[0] === id) || [id, id])[1];
 
 // Timeline geometry (model coordinates). The spine (PR groups + loose commits)
 // runs down x=0, newest at top; expanded commits indent right; decisions sit in
@@ -354,9 +359,14 @@ function renderLegend() {
     .join("");
 }
 
-/* ---------- docs mode ---------- */
+/* ---------- docs mode: three-pane (sidebar · content · TOC) ---------- */
 function renderDocsNav() {
-  $("#nav").innerHTML = DOCS.map(([id, l]) => `<button class="nav-item" data-id="${id}">${l}</button>`).join("");
+  const badge = (id) => (id === "decisions" ? `<span class="badge">${spine.decisions.length}</span>` : "");
+  $("#nav").innerHTML = DOC_SECTIONS.map(
+    (sec) => `<div class="nav-section"><div class="nav-title">${sec.title}</div>${sec.items
+      .map((id) => `<button class="nav-item" data-id="${id}"><span>${docLabel(id)}</span>${badge(id)}</button>`)
+      .join("")}</div>`
+  ).join("");
   $("#nav").querySelectorAll(".nav-item").forEach((b) =>
     b.addEventListener("click", () => {
       docActive = b.dataset.id;
@@ -375,8 +385,39 @@ function renderDoc(id) {
     const map = { architecture: spine.context, conventions: spine.conventions, journal: spine.journal };
     body = `<article class="md">${map[id] ?? '<p class="muted">Empty.</p>'}</article>`;
   }
-  const label = DOCS.find((d) => d[0] === id)[1];
-  $("#main").innerHTML = `<div class="content"><div class="kicker">${label}</div>${body}</div>`;
+  $("#main").innerHTML = `<div class="content"><header class="doc-head"><div class="kicker">${docLabel(id)}</div></header>${body}</div>`;
+  $("#main").scrollTop = 0;
+  buildToc(id);
+}
+
+// Generate the on-this-page rail from the rendered headings (ADR-0005).
+function buildToc(id) {
+  const toc = $("#toc");
+  const sel = id === "decisions" ? "article h1" : "article h2, article h3";
+  const heads = [...$("#main").querySelectorAll(sel)];
+  if (heads.length < 3) {
+    toc.hidden = true;
+    toc.innerHTML = "";
+    return;
+  }
+  const used = new Set();
+  const items = heads.map((h) => {
+    let slug = (h.textContent || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "h";
+    while (used.has(slug)) slug += "-x";
+    used.add(slug);
+    h.id = slug;
+    return { slug, text: h.textContent, level: h.tagName === "H3" ? "h3" : "h2" };
+  });
+  toc.hidden = false;
+  toc.innerHTML = `<div class="toc-title">On this page</div><div class="toc-list">${items
+    .map((it) => `<a class="toc-link ${it.level}" data-slug="${it.slug}">${esc(it.text)}</a>`)
+    .join("")}</div>`;
+  toc.querySelectorAll(".toc-link").forEach((a) =>
+    a.addEventListener("click", () => {
+      const el = document.getElementById(a.dataset.slug);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    })
+  );
 }
 
 /* ---------- starfield ---------- */

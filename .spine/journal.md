@@ -19,8 +19,8 @@ rebase repos show loose commits (known limit); zero new deps.
 
 ## Next step
 
-`build` slice 3: Docs three-pane redesign — sectioned sidebar (active + ADR
-count), ~720px content + header, client-generated TOC rail.
+`verify`: `cd dashboard && node --test` + `node scripts/validate.mjs` green;
+confirm every criterion against evidence. Then `ship`.
 
 ## Build plan (TDD vertical slices)
 
@@ -62,12 +62,13 @@ Graph — PR clustering:
 - [x] No-git fallback unchanged; `/api/graph` stays valid.
 
 Docs — enterprise redesign:
-- [ ] Content is constrained to a readable measure (~720px), centered, with a
-      refined heading/type hierarchy.
-- [ ] Sidebar is sectioned with a clear active state and shows the ADR count.
-- [ ] Long docs show an in-page table-of-contents rail; short docs omit it
-      gracefully.
-- [ ] Each doc renders a header (title + kicker/meta).
+- [x] Content is constrained to a ~720px measure with a refined hierarchy +
+      doc header. (/tmp/spine-docs2.png)
+- [x] Sidebar is sectioned (Overview / Knowledge) with active state + ADR count
+      badge (5). 
+- [x] In-page TOC rail (section headings for prose docs, ADR titles for
+      decisions); hidden when < 3 headings or on narrow widths.
+- [x] Each doc renders a header (kicker + title).
 
 Cross-cutting:
 - [ ] Zero new runtime dependencies.
