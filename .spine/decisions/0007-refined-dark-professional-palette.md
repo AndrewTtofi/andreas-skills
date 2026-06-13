@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-06-13
+- **Labels:** dashboard, ux
 - Supersedes the visual language of
   [[0003-vertical-timeline-via-cytoscape-preset]].
 

@@ -34,18 +34,23 @@ coding agent to work like a senior engineer and not lose the plot.
   - `graph-builder.mjs` — builds a **knowledge graph** `{nodes, edges}`: clusters
     every commit by PR/segment ([[0004-cluster-commits-by-pull-request]],
     [[0006-cluster-every-commit-into-segments]]), overlays Spine meaning
-    ([[0002-spine-overlays-the-commit-timeline]]), and adds non-sequential
-    **module hubs** + **concept** nodes with `touches`/`references`/`mentions`
-    edges ([[0009-knowledge-graph-brain-with-hubs]]).
+    ([[0002-spine-overlays-the-commit-timeline]]), adds non-sequential **module
+    hubs** + **concept** nodes ([[0009-knowledge-graph-brain-with-hubs]]), and
+    attaches **labels** (derived `type`/`scope` + explicit Spine labels) and
+    `time` to every node ([[0010-labels-as-a-queryable-layer]]).
   - `markdown.mjs` — markdown → HTML.
   - `server.mjs` — composes the above; serves `/api/spine`, `/api/graph`, static
     `public/`.
   - `public/` — frontend (vanilla JS + Cytoscape + fcose via CDN), **Stripe-grade
     light theme** ([[0008-stripe-grade-light-design-system]]). Graph mode is a
-    **force-directed brain** navigated by fit/zoom/search, clusters collapse to
-    commits ([[0009-knowledge-graph-brain-with-hubs]]); Docs mode is a three-pane
-    layout (sectioned sidebar · constrained content · generated TOC),
-    [[0005-docs-three-pane-with-generated-toc]].
+    knowledge-graph **brain** with a **deterministic spring+collision layout** —
+    clusters chained in time order (sequence in line), satellites spring to their
+    connections, hard collision = zero overlap
+    ([[0009-knowledge-graph-brain-with-hubs]],
+    [[0013-deterministic-spring-collision-brain]]) — navigated by fit/zoom/search,
+    clusters collapse to commits, with a **filter bar** (time range + label chips)
+    and a **WIP anchor** ([[0011-filter-bar-and-wip-anchor]]);
+    Docs mode is a three-pane layout ([[0005-docs-three-pane-with-generated-toc]]).
 - `docs/` — `plans/`, `specs/`, and `launch/` (unpublished launch material).
 - `.spine/` — this memory store: `context.md`, `conventions.md`, `journal.md`,
   `decisions/`. The connective tissue across phases and sessions.
@@ -83,3 +88,10 @@ linked via `mentions` — the conceptual layer of the brain.
 
 **The brain**: the force-directed knowledge graph the dashboard renders — clusters
 + ADRs + module hubs + concepts, with sequential and non-sequential edges.
+
+**Label**: a queryable tag on a node — derived (`type/feat`, `scope/dashboard`
+from commit subjects) or explicit (ADR `labels:`, journal `{labels}`). The basis
+for the dashboard's filter bar. See [[0010-labels-as-a-queryable-layer]].
+
+**WIP anchor**: the "Current branch" cluster, styled as the always-visible
+reference point for current work-in-progress.

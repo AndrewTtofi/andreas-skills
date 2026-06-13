@@ -16,9 +16,10 @@ that pays that forward.
 3. **Update `conventions.md`** if a new pattern or command became standard.
 4. **Record decisions.** For each non-obvious choice with lasting impact, add an
    ADR in `.spine/decisions/NNNN-short-title.md` (context, decision, why,
-   consequences).
+   consequences) — with **labels** (area + topic).
 5. **Compact `journal.md`.** Collapse the blow-by-blow into: *Current focus*,
-   *Next step*, and a short *History* of dated milestones. Drop transient noise.
+   *Next step*, and a short *History* of dated milestones, each tagged with
+   `{labels}`. Drop transient noise.
 6. **Write a one-paragraph handoff** at the top of *Current focus* so a fresh
    session — yours or a teammate's — can resume immediately.
 7. **Suggest committing** the updated `.spine/`.

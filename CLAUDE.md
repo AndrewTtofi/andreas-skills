@@ -28,3 +28,11 @@ Run `node scripts/validate.mjs` before every commit. It must pass.
 `.spine/` is the per-repo memory store: `context.md`, `conventions.md`,
 `journal.md`, and `decisions/`. Skills read and write it. `init` creates it;
 `remember` compacts it. It is the connective tissue across phases and sessions.
+
+## Labels
+
+Work in the Spine is **labelled** so the path stays queryable and filterable.
+ADRs carry a `- **Labels:** area, topic` line; journal History entries are tagged
+`- <date> {labels} — …`. Reuse a small, shared vocabulary across both. The skills
+(`align`, `design`, `remember`) record labels; the dashboard derives more from
+commit `type`/`scope` and lets you filter the graph by them.

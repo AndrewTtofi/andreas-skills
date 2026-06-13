@@ -46,7 +46,7 @@ async function boot() {
   if (!spine.exists) {
     $("#hint").hidden = true;
     $("#legend").hidden = true;
-    $(".search").hidden = true;
+    $(".controls").hidden = true;
     $("#cy").innerHTML = `<div class="floatmsg"><div class="kicker">no spine</div><h1>Nothing recorded here yet</h1><p>Run <code>init</code> to create a <code>.spine/</code> store, then refresh.</p></div>`;
     return;
   }
@@ -54,6 +54,7 @@ async function boot() {
   renderLegend();
   renderDocsNav();
   setupSearch();
+  setupFilter();
 }
 
 function setupModes() {
@@ -92,7 +93,8 @@ function nodeData(n) {
   const deg = degreeOf(n.id);
   if (isGroup(n)) {
     const open = expanded.has(n.id);
-    return { id: n.id, type: n.type, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}`, deg };
+    const wip = n.label === "Current branch" ? 1 : 0;
+    return { id: n.id, type: n.type, wip, label: `${open ? "▾" : "▸"}  ${n.label}   ·${n.count}${wip ? "   ● WIP" : ""}`, deg };
   }
   if (n.type === "module") return { id: n.id, type: "module", label: n.label, size: 16 + Math.min(n.count, 8) * 4, deg };
   if (n.type === "concept") return { id: n.id, type: "concept", label: n.label, deg };
@@ -145,12 +147,13 @@ function renderGraph() {
   cy = cytoscape({
     container: $("#cy"),
     elements: computeElements(),
+    layout: { name: "preset" },
     minZoom: 0.15,
     maxZoom: 3,
     wheelSensitivity: 0.3,
     style: graphStyle(),
   });
-  runLayout();
+  layoutBrain();
   cy.on("tap", 'node[type="pr"], node[type="segment"]', (evt) => toggleGroup(evt.target.id()));
   cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"], node[type="module"], node[type="concept"]', (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
@@ -163,27 +166,148 @@ function renderGraph() {
   cy.on("mouseout", "node", clearHighlight);
 }
 
-function runLayout(randomize = true) {
-  const opts = {
-    name: "fcose",
-    quality: "default",
-    animate: true,
-    animationDuration: 600,
-    randomize,
-    fit: true,
-    padding: 60,
-    nodeSeparation: 130,
-    idealEdgeLength: 95,
-    nodeRepulsion: 7000,
-    gravity: 0.22,
-    gravityRange: 3.2,
-    numIter: 1800,
+// Deterministic, time-sequenced layout (.spine/decisions/0012): clusters run down
+// a chronological spine (newest at top) — the visible sequence — while module
+// hubs, ADRs, and concepts are placed deterministically around their connections.
+// Same input → same positions every reload (no scrambling).
+// Deterministic spring + collision brain (.spine/decisions/0013): a force-style
+// web where the cluster `parent` chain stays tight and in order (the sequence in
+// line), satellites cluster by their connections, and a hard AABB collision pass
+// guarantees nothing overlaps. No randomness → identical every reload.
+function layoutBrain() {
+  const gById = {};
+  graph.nodes.forEach((n) => (gById[n.id] = n));
+  const hash = (s) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
   };
-  try {
-    cy.layout(opts).run();
-  } catch {
-    cy.layout({ name: "cose", animate: true, fit: true, padding: 60, nodeRepulsion: 12000, idealEdgeLength: 95 }).run();
+
+  // one record per visible node, sized by its LABEL-INCLUSIVE box (+ gap) so the
+  // collision pass keeps even wide labels (e.g. module paths) from touching.
+  const items = cy.nodes().map((node) => {
+    const g = gById[node.id()] || {};
+    const bb = node.boundingBox({ includeLabels: true });
+    return {
+      id: node.id(),
+      node,
+      x: 0,
+      y: 0,
+      fx: 0,
+      fy: 0,
+      isCluster: g.type === "pr" || g.type === "segment",
+      w: bb.w + 28,
+      h: bb.h + 28,
+    };
+  });
+  if (!items.length) return;
+  const byId = {};
+  items.forEach((o) => (byId[o.id] = o));
+
+  const seen = new Set();
+  const edges = [];
+  for (const e of graph.edges) {
+    const s = resolve(e.source), t = resolve(e.target);
+    if (s === t || !byId[s] || !byId[t]) continue;
+    const key = `${s}>${t}:${e.rel}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    edges.push({ a: byId[s], b: byId[t], rel: e.rel });
   }
+
+  // 1. deterministic seed — clusters get an x-target by chronological order so
+  //    the sequence flows LEFT→RIGHT (oldest, PR #1, on the left; newest right).
+  //    Seed there with a hashed y; the force pass keeps that left→right flow.
+  const clusters = items.filter((o) => o.isCluster);
+  const chrono = clusters.slice().sort((a, b) => {
+    const ta = gById[a.id].time, tb = gById[b.id].time;
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
+  const SPACING = 230;
+  chrono.forEach((o, i) => {
+    o.xTarget = (i - (chrono.length - 1) / 2) * SPACING;
+    o.x = o.xTarget;
+    o.y = (hash(o.id) % 420) - 210;
+  });
+  for (const o of items) {
+    if (o.isCluster) continue;
+    const e = edges.find((e) => e.a === o || e.b === o);
+    const anchor = e ? (e.a === o ? e.b : e.a) : null;
+    const j = hash(o.id);
+    const a = ((j % 360) * Math.PI) / 180;
+    if (anchor) (o.x = anchor.x + Math.cos(a) * 70), (o.y = anchor.y + Math.sin(a) * 70);
+    else (o.x = (j % 700) - 350), (o.y = ((j >> 3) % 700) - 350);
+  }
+
+  // 2. force pass (Fruchterman–Reingold-ish): repulsion + spring attraction +
+  //    light centering gravity, cooled over a fixed number of iterations.
+  const K = 150;
+  let temp = 260;
+  for (let it = 0; it < 320; it++) {
+    for (const o of items) (o.fx = 0), (o.fy = 0);
+    for (let i = 0; i < items.length; i++) {
+      for (let k = i + 1; k < items.length; k++) {
+        const a = items[i], b = items[k];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const d = Math.hypot(dx, dy) || 0.01;
+        const f = (K * K) / d;
+        a.fx += (dx / d) * f; a.fy += (dy / d) * f;
+        b.fx -= (dx / d) * f; b.fy -= (dy / d) * f;
+      }
+    }
+    for (const e of edges) {
+      const dx = e.a.x - e.b.x, dy = e.a.y - e.b.y;
+      const d = Math.hypot(dx, dy) || 0.01;
+      let f = (d * d) / K;
+      if (e.rel === "parent") f *= 1.3; // chain stays connected (x already fixed by time)
+      e.a.fx -= (dx / d) * f; e.a.fy -= (dy / d) * f;
+      e.b.fx += (dx / d) * f; e.b.fy += (dy / d) * f;
+    }
+    for (const o of items) {
+      o.fy += -o.y * 0.02; // gentle vertical centering
+      if (o.xTarget === undefined) o.fx += -o.x * 0.01; // satellites: gentle x-centering
+    }
+    for (const o of items) {
+      const d = Math.hypot(o.fx, o.fy) || 1;
+      const disp = Math.min(d, temp);
+      o.x += (o.fx / d) * disp;
+      o.y += (o.fy / d) * disp;
+      if (o.xTarget !== undefined) o.x = o.xTarget; // pin cluster x → strict left→right time order
+    }
+    temp *= 0.975;
+  }
+
+  // 3. hard collision pass — separate overlapping bounding boxes until none
+  //    overlap. This is the zero-overlap guarantee.
+  for (let pass = 0; pass < 800; pass++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) {
+      for (let k = i + 1; k < items.length; k++) {
+        const a = items[i], b = items[k];
+        const ox = (a.w + b.w) / 2 - Math.abs(a.x - b.x);
+        const oy = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+        if (ox > 0 && oy > 0) {
+          moved = true;
+          // clusters keep their time-column x → resolve them in y; satellites free
+          const bothClusters = a.isCluster && b.isCluster;
+          if (ox < oy && !bothClusters) {
+            const dir = a.x <= b.x ? -1 : 1;
+            if (a.isCluster) b.x -= dir * ox;
+            else if (b.isCluster) a.x += dir * ox;
+            else (a.x += (dir * ox) / 2), (b.x -= (dir * ox) / 2);
+          } else {
+            const dir = a.y <= b.y ? -1 : 1;
+            a.y += (dir * oy) / 2;
+            b.y -= (dir * oy) / 2;
+          }
+        }
+      }
+    }
+    if (!moved) break;
+  }
+
+  for (const o of items) o.node.position({ x: o.x, y: o.y });
+  cy.fit(undefined, 60);
 }
 
 // Expand/collapse a cluster WITHOUT reshuffling the rest of the brain. Existing
@@ -267,6 +391,11 @@ function graphStyle() {
         "text-outline-width": 0,
       },
     },
+    // WIP anchor: the Current-branch cluster, accent-filled
+    {
+      selector: "node[wip = 1]",
+      style: { "background-color": ACCENT, "border-color": ACCENT, color: "#ffffff" },
+    },
     {
       selector: 'node[type="module"]',
       style: {
@@ -342,7 +471,7 @@ function graphStyle() {
       style: { shape: "star", width: 22, height: 22, "background-color": ACCENT, color: ACCENT, "font-weight": 600 },
     },
     { selector: "edge", style: { "curve-style": "bezier", width: 1, opacity: 0.85, "line-color": LINE } },
-    { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 1.6 } },
+    { selector: 'edge[rel="parent"]', style: { "line-color": "#9aa6ee", width: 2.6, opacity: 0.9 } },
     { selector: 'edge[rel="touches"]', style: { "line-color": "#dfe4ea", width: 1 } },
     { selector: 'edge[rel="contains"]', style: { "line-color": "#e7ebf0", width: 1, opacity: 0.7 } },
     { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },
@@ -397,9 +526,12 @@ function runSearch(raw) {
     }
   }
   if (changed) {
+    const prev = {};
+    cy.nodes().forEach((n) => (prev[n.id()] = { ...n.position() }));
     cy.elements().remove();
     cy.add(computeElements());
-    runLayout(false);
+    cy.nodes().forEach((n) => prev[n.id()] && n.position(prev[n.id()]));
+    for (const id of expanded) placeCommitsRing(id, prev[id] || { x: 0, y: 0 });
   }
   const ids = new Set(matched.map((n) => resolve(n.id)));
   const hits = cy.nodes().filter((n) => ids.has(n.id()));
@@ -408,6 +540,86 @@ function runSearch(raw) {
   hits.removeClass("dim").addClass("search-hit");
   hits.neighborhood().removeClass("dim");
   cy.animate({ fit: { eles: hits, padding: 140 } }, { duration: 320 });
+}
+
+/* ---------- filter bar: by date window + labels ---------- */
+let dates = []; // sorted distinct YYYY-MM-DD present in the graph
+const activeLabels = new Set();
+
+function setupFilter() {
+  const labelSet = new Set();
+  graph.nodes.forEach((n) => (n.labels || []).forEach((l) => labelSet.add(l)));
+  $("#chips").innerHTML = [...labelSet]
+    .sort()
+    .map((l) => `<button class="chip" type="button" data-label="${esc(l)}">${esc(l)}</button>`)
+    .join("");
+  $("#chips").querySelectorAll(".chip").forEach((b) =>
+    b.addEventListener("click", () => {
+      const l = b.dataset.label;
+      if (activeLabels.has(l)) (activeLabels.delete(l), b.classList.remove("active"));
+      else (activeLabels.add(l), b.classList.add("active"));
+      applyFilter();
+    })
+  );
+
+  dates = [...new Set(graph.nodes.filter((n) => n.time).map((n) => n.time.slice(0, 10)))].sort();
+  const mn = $("#time-min"), mx = $("#time-max");
+  mn.max = mx.max = Math.max(dates.length - 1, 0);
+  mn.value = 0;
+  mx.value = dates.length - 1;
+  mn.addEventListener("input", () => clampTime(true));
+  mx.addEventListener("input", () => clampTime(false));
+  $("#clear-filter").addEventListener("click", () => {
+    activeLabels.clear();
+    $("#chips").querySelectorAll(".chip").forEach((b) => b.classList.remove("active"));
+    mn.value = 0;
+    mx.value = dates.length - 1;
+    updateTimeText();
+    applyFilter();
+  });
+  updateTimeText();
+}
+function clampTime(isMin) {
+  const mn = $("#time-min"), mx = $("#time-max");
+  if (+mn.value > +mx.value) isMin ? (mx.value = mn.value) : (mn.value = mx.value);
+  updateTimeText();
+  applyFilter();
+}
+function updateTimeText() {
+  if (!dates.length) return ($("#time-text").textContent = "");
+  const a = dates[+$("#time-min").value], b = dates[+$("#time-max").value];
+  const full = +$("#time-min").value === 0 && +$("#time-max").value === dates.length - 1;
+  $("#time-text").textContent = full ? "all dates" : `${fmtShort(a)} – ${fmtShort(b)}`;
+}
+function fmtShort(d) {
+  const dt = new Date(d);
+  return Number.isNaN(+dt) ? d : dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function applyFilter() {
+  if (!cy) return;
+  const from = dates[+$("#time-min").value];
+  const to = dates[+$("#time-max").value];
+  cy.batch(() => {
+    cy.nodes().forEach((node) => {
+      const n = nodeById(node.id());
+      node.style("display", !n || nodePasses(n, from, to) ? "element" : "none");
+    });
+    cy.edges().forEach((e) => {
+      const hidden = e.source().style("display") === "none" || e.target().style("display") === "none";
+      e.style("display", hidden ? "none" : "element");
+    });
+  });
+}
+function nodePasses(n, from, to) {
+  if (n.type === "segment" && n.label === "Current branch") return true; // WIP always visible
+  if (n.time && from && to) {
+    const d = n.time.slice(0, 10);
+    if (d < from || d > to) return false;
+  }
+  if (activeLabels.size) {
+    if (!(n.labels || []).some((l) => activeLabels.has(l))) return false;
+  }
+  return true;
 }
 
 function openPanel(node) {

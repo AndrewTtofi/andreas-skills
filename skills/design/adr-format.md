@@ -13,6 +13,7 @@ next 4-digit number after the highest existing ADR (start at `0001`).
 
 - **Status:** accepted
 - **Date:** <YYYY-MM-DD>
+- **Labels:** <comma-separated tags for filtering — area + topic, e.g. `data, infra`>
 
 ## Context
 
@@ -35,3 +36,5 @@ Include notable trade-offs we accepted.>
 - Record the alternatives you rejected and why — that's the most valuable part.
 - ADRs are immutable history. To change a decision, write a new ADR that
   supersedes the old one (note it in both).
+- **Labels** make decisions queryable. Use a small, reusable vocabulary (the same
+  tags across ADRs and journal entries) so they can be filtered together.

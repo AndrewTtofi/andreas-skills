@@ -27,6 +27,7 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     label: shortTitle(d.title),
     date: adrDate(d.markdown),
     markdown: d.markdown,
+    labels: adrLabels(d.markdown),
   }));
   const focus = s.journal ? extractFocus(s.journal) : null;
   let groupOf = new Map();
@@ -39,9 +40,15 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     const groupNodes = clustered.groupNodes;
     groupOf = clustered.groupOf;
 
+    const clusterLabels = new Map(); // clusterId -> Set(labels)
     for (const c of commits) {
       const milestone = matchMilestone(c, milestones);
       const group = groupOf.get(c.sha);
+      const labels = deriveCommitLabels(c.subject);
+      if (group) {
+        if (!clusterLabels.has(group)) clusterLabels.set(group, new Set());
+        for (const l of labels) clusterLabels.get(group).add(l);
+      }
       nodes.push({
         id: `commit:${c.sha}`,
         type: "commit",
@@ -50,6 +57,7 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
         time: c.date,
         author: c.author,
         body: c.body,
+        labels,
         ...(milestone ? { milestone } : {}),
         ...(group ? { group } : {}),
       });
@@ -57,24 +65,27 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
         if (shaSet.has(p)) edges.push({ source: `commit:${c.sha}`, target: `commit:${p}`, rel: "parent" });
       }
     }
-    for (const gn of groupNodes) nodes.push(gn);
+    for (const gn of groupNodes) {
+      gn.labels = [...(clusterLabels.get(gn.id) || [])];
+      nodes.push(gn);
+    }
 
     for (const d of decisions) {
-      nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date });
+      nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date, labels: d.labels });
       const target = commitForDecision(d, commits);
       if (target) edges.push({ source: d.nodeId, target: `commit:${target.sha}`, rel: "decides" });
     }
 
     if (focus !== null) {
-      nodes.push({ id: "focus", type: "focus", label: "Current focus", time: commits[0].date });
+      nodes.push({ id: "focus", type: "focus", label: "Current focus", time: commits[0].date, labels: [] });
       edges.push({ source: "focus", target: `commit:${commits[0].sha}`, rel: "focuses" });
     }
   } else {
     // No git available: degrade to a Spine-only timeline. Never crash.
     for (const d of decisions) {
-      nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date });
+      nodes.push({ id: d.nodeId, type: "decision", label: d.label, time: d.date, labels: d.labels });
     }
-    if (focus !== null) nodes.push({ id: "focus", type: "focus", label: "Current focus", time: null });
+    if (focus !== null) nodes.push({ id: "focus", type: "focus", label: "Current focus", time: null, labels: [] });
   }
 
   // ADR → ADR supersedes edges (git-independent).
@@ -117,7 +128,7 @@ function addConceptNodes(context, decisions, nodes, edges) {
     const mentioned = decisions.filter((d) => re.test(d.markdown));
     if (mentioned.length < 2) continue;
     const id = `concept:${term.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-    nodes.push({ id, type: "concept", label: term });
+    nodes.push({ id, type: "concept", label: term, labels: [] });
     for (const d of mentioned) edges.push({ source: id, target: d.nodeId, rel: "mentions" });
   }
 }
@@ -147,7 +158,7 @@ function addModuleHubs(commits, groupOf, nodes, edges) {
   for (const [mod, clusters] of moduleClusters) {
     if (clusters.size < 2) continue;
     const id = `mod:${mod}`;
-    nodes.push({ id, type: "module", label: mod, count: clusters.size });
+    nodes.push({ id, type: "module", label: mod, count: clusters.size, labels: scopeLabel(mod) });
     for (const cl of clusters) edges.push({ source: cl, target: id, rel: "touches" });
   }
 }
@@ -174,6 +185,32 @@ function moduleOf(path) {
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// --- labels (.spine/decisions/0010) ---
+// Derive `type/<t>` and `scope/<s>` from a conventional-commit subject.
+function deriveCommitLabels(subject) {
+  const m = (subject || "").match(/^(\w+)(?:\(([^)]+)\))?!?:/);
+  if (!m) return [];
+  const out = [`type/${m[1].toLowerCase()}`];
+  if (m[2]) out.push(`scope/${m[2].toLowerCase()}`);
+  return out;
+}
+
+// Explicit labels from an ADR's `- **Labels:** a, b` line (or `labels: [a, b]`).
+function adrLabels(md) {
+  const m = (md || "").match(/\*\*Labels:\*\*\s*(.+)/i) || (md || "").match(/^labels:\s*(.+)$/im);
+  if (!m) return [];
+  return m[1]
+    .split(/[,\s]+/)
+    .map((s) => s.replace(/[[\]]/g, "").trim())
+    .filter(Boolean);
+}
+
+// A module's top-level scope, so hubs participate in scope filtering.
+function scopeLabel(mod) {
+  const top = mod.split("/")[0];
+  return top ? [`scope/${top}`] : [];
 }
 
 // Partition every commit into a group so nothing is loose (.spine/decisions/0004,
