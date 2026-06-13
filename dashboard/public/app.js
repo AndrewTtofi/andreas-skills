@@ -1,14 +1,15 @@
 const $ = (s) => document.querySelector(s);
 
-// Refined-dark palette (.spine/decisions/0007): slate ramp + one indigo accent.
-const ACCENT = "#6e7bf2";
-const DOT = "#aab2c5";
-const SLATE = "#c9cfdb";
-const LINE = "rgba(170,178,197,0.22)";
+// Stripe-grade light palette (.spine/decisions/0008): navy ink + one blurple accent.
+const ACCENT = "#635bff";
+const DOT = "#8792a2";
+const INK = "#0a2540";
+const SLATE = "#52607a";
+const LINE = "#d4dae3";
 const LEGEND = [
   { c: ACCENT, label: "clusters" },
   { c: DOT, label: "commits" },
-  { c: SLATE, label: "decisions" },
+  { c: "#b9c2cf", label: "decisions" },
   { c: ACCENT, label: "current focus" },
 ];
 const DOCS = [
@@ -216,37 +217,38 @@ function graphStyle() {
       style: {
         label: "data(label)",
         color: SLATE,
-        "font-family": "IBM Plex Sans, system-ui, sans-serif",
+        "font-family": "Inter, system-ui, sans-serif",
         "font-size": 12,
-        "text-outline-color": "#0d0f14",
-        "text-outline-width": 2,
+        "text-outline-color": "#f6f9fc",
+        "text-outline-width": 2.5,
         "min-zoomed-font-size": 8,
       },
     },
-    // clusters (PR + segment): accent-outlined chips on the spine
+    // clusters (PR + segment): white chips with the accent border
     {
       selector: 'node[type="pr"], node[type="segment"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(110,123,242,0.10)",
+        "background-color": "#ffffff",
         "border-width": 1.5,
         "border-color": ACCENT,
-        color: "#e6e8ee",
+        color: INK,
         width: "label",
         height: "label",
-        padding: 11,
+        padding: 12,
         "text-valign": "center",
         "text-halign": "center",
         "text-max-width": 330,
         "text-wrap": "ellipsis",
         "font-weight": 600,
+        "text-outline-width": 0,
       },
     },
     {
       selector: 'node[type="commit"]',
       style: {
-        width: 10,
-        height: 10,
+        width: 9,
+        height: 9,
         shape: "ellipse",
         "background-color": DOT,
         "text-valign": "center",
@@ -254,53 +256,54 @@ function graphStyle() {
         "text-margin-x": 9,
         "text-max-width": 250,
         "text-wrap": "ellipsis",
-        color: "#9aa0ad",
+        color: "#697386",
         "font-size": 11,
       },
     },
     {
       selector: 'node[type="commit"][milestone = 1]',
-      style: { width: 14, height: 14, "border-width": 3, "border-color": ACCENT, "border-opacity": 0.8, color: SLATE },
+      style: { width: 13, height: 13, "border-width": 3, "border-color": ACCENT, "border-opacity": 0.85, color: INK },
     },
     {
       selector: 'node[type="decision"]',
       style: {
         shape: "round-rectangle",
-        "background-color": "rgba(201,207,219,0.05)",
+        "background-color": "#ffffff",
         "border-width": 1,
         "border-color": LINE,
         color: SLATE,
         width: "label",
         height: "label",
-        padding: 9,
+        padding: 10,
         "text-valign": "center",
         "text-halign": "center",
         "text-max-width": 210,
         "text-wrap": "wrap",
         "font-size": 11,
+        "text-outline-width": 0,
       },
     },
     {
       selector: 'node[type="focus"]',
       style: {
         shape: "star",
-        width: 26,
-        height: 26,
+        width: 24,
+        height: 24,
         "background-color": ACCENT,
         "text-valign": "center",
         "text-halign": "right",
         "text-margin-x": 10,
-        color: "#aab4f6",
+        color: ACCENT,
         "font-weight": 600,
       },
     },
-    { selector: "edge", style: { "curve-style": "bezier", width: 1.3, opacity: 0.5, "line-color": LINE } },
-    { selector: 'edge[rel="parent"]', style: { "line-color": "rgba(170,178,197,0.4)", width: 2, opacity: 0.7 } },
-    { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed", opacity: 0.6 } },
+    { selector: "edge", style: { "curve-style": "bezier", width: 1.2, opacity: 0.9, "line-color": LINE } },
+    { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 2 } },
+    { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },
     { selector: 'edge[rel="supersedes"]', style: { "line-color": ACCENT, "line-style": "dotted", width: 1.6, opacity: 0.7 } },
-    { selector: 'edge[rel="focuses"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.5 } },
-    { selector: ".dim", style: { opacity: 0.06, "text-opacity": 0 } },
-    { selector: "node:selected", style: { "border-width": 2.5, "border-color": ACCENT, "border-opacity": 0.9 } },
+    { selector: 'edge[rel="focuses"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.6 } },
+    { selector: ".dim", style: { opacity: 0.12, "text-opacity": 0 } },
+    { selector: "node:selected", style: { "border-width": 2.5, "border-color": ACCENT } },
     { selector: "node.hot", style: { "text-opacity": 1 } },
     { selector: "edge.hot", style: { opacity: 1, width: 2.4, "line-color": ACCENT } },
   ];
