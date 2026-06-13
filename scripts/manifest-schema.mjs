@@ -68,6 +68,50 @@ export function validateManifest(plugin) {
 }
 
 export function validateMarketplace(marketplace) {
-  // Implemented in build slice 2.
-  return { errors: [], warnings: [] };
+  const errors = [];
+  const warnings = [];
+  const label = "marketplace.json";
+
+  checkName(marketplace.name, label, errors);
+  if (marketplace.owner === undefined) {
+    errors.push(`${label}: missing "owner"`);
+  } else {
+    checkPersonObject(marketplace.owner, "owner", label, errors);
+  }
+
+  if (!Array.isArray(marketplace.plugins)) {
+    errors.push(`${label}: "plugins" must be an array`);
+  } else if (marketplace.plugins.length === 0) {
+    errors.push(`${label}: "plugins" must not be empty`);
+  } else {
+    marketplace.plugins.forEach((entry, i) => {
+      const elabel = `${label} plugins[${i}]`;
+      checkName(entry.name, elabel, errors);
+      if (entry.source === undefined || entry.source === null) {
+        errors.push(`${elabel}: missing "source"`);
+      } else if (isString(entry.source)) {
+        if (!entry.source.startsWith("./")) {
+          errors.push(
+            `${elabel}: string "source" must be a relative path starting with "./"`,
+          );
+        }
+      } else if (!isPlainObject(entry.source)) {
+        errors.push(
+          `${elabel}: "source" must be a "./"-prefixed string or an object`,
+        );
+      }
+      checkPersonObject(entry.author, "author", elabel, errors);
+      if (entry.keywords !== undefined && !Array.isArray(entry.keywords)) {
+        errors.push(`${elabel}: "keywords" must be an array`);
+      }
+      if (entry.license === undefined) {
+        warnings.push(`${elabel}: missing "license" (recommended)`);
+      }
+      if (entry.keywords === undefined) {
+        warnings.push(`${elabel}: missing "keywords" (recommended)`);
+      }
+    });
+  }
+
+  return { errors, warnings };
 }
