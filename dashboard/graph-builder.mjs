@@ -29,12 +29,15 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     markdown: d.markdown,
   }));
   const focus = s.journal ? extractFocus(s.journal) : null;
+  let groupOf = new Map();
 
   if (git.available && git.commits.length) {
     const commits = git.commits; // newest-first
     const shaSet = new Set(commits.map((c) => c.sha));
     const milestones = extractHistoryMilestones(s.journal);
-    const { groupNodes, groupOf } = clusterCommits(commits);
+    const clustered = clusterCommits(commits);
+    const groupNodes = clustered.groupNodes;
+    groupOf = clustered.groupOf;
 
     for (const c of commits) {
       const milestone = matchMilestone(c, milestones);
@@ -82,7 +85,91 @@ export function buildGraph(spineOrDir, repoDir, opts = {}) {
     }
   }
 
+  // --- non-sequential "brain" edges (.spine/decisions/0009) ---
+  addReferenceEdges(decisions, edges);
+  addConceptNodes(s.context, decisions, nodes, edges);
+  if (git.available && git.commits.length) addModuleHubs(git.commits, groupOf, nodes, edges);
+
   return { nodes, edges };
+}
+
+// ADR ↔ ADR references from [[wikilinks]] (excluding pairs already superseded).
+function addReferenceEdges(decisions, edges) {
+  const superseded = new Set(edges.filter((e) => e.rel === "supersedes").map((e) => `${e.source}>${e.target}`));
+  const seen = new Set();
+  for (const d of decisions) {
+    for (const m of (d.markdown || "").matchAll(/\[\[(\d{4})[^\]]*\]\]/g)) {
+      const tgt = decisions.find((x) => x.id !== d.id && x.id.startsWith(m[1]));
+      if (!tgt) continue;
+      const key = `${d.nodeId}>${tgt.nodeId}`;
+      if (superseded.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ source: d.nodeId, target: tgt.nodeId, rel: "references" });
+    }
+  }
+}
+
+// Concept nodes from context.md's Language section, linked to the ADRs that name
+// them — but only when shared by ≥2 ADRs (no noise).
+function addConceptNodes(context, decisions, nodes, edges) {
+  for (const term of conceptTerms(context)) {
+    const re = new RegExp(`\\b${escapeRe(term)}\\b`, "i");
+    const mentioned = decisions.filter((d) => re.test(d.markdown));
+    if (mentioned.length < 2) continue;
+    const id = `concept:${term.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    nodes.push({ id, type: "concept", label: term });
+    for (const d of mentioned) edges.push({ source: id, target: d.nodeId, rel: "mentions" });
+  }
+}
+
+function conceptTerms(context) {
+  if (!context) return [];
+  const sec = context.match(/##\s*Language\s*\n+([\s\S]*?)(?:\n##|$)/i);
+  if (!sec) return [];
+  const terms = [...sec[1].matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1].trim());
+  return [...new Set(terms)];
+}
+
+// Module hubs: a file/module touched by ≥2 clusters becomes a hub the clusters
+// connect through (the non-sequential "brain" signal). See .spine/decisions/0009.
+function addModuleHubs(commits, groupOf, nodes, edges) {
+  const moduleClusters = new Map(); // module -> Set(clusterId)
+  for (const c of commits) {
+    const cluster = groupOf.get(c.sha);
+    if (!cluster) continue;
+    for (const f of c.files || []) {
+      const mod = moduleOf(f);
+      if (!mod) continue;
+      if (!moduleClusters.has(mod)) moduleClusters.set(mod, new Set());
+      moduleClusters.get(mod).add(cluster);
+    }
+  }
+  for (const [mod, clusters] of moduleClusters) {
+    if (clusters.size < 2) continue;
+    const id = `mod:${mod}`;
+    nodes.push({ id, type: "module", label: mod, count: clusters.size });
+    for (const cl of clusters) edges.push({ source: cl, target: id, rel: "touches" });
+  }
+}
+
+// Map a file path to a meaningful module grouping.
+function moduleOf(path) {
+  const p = path.split("/");
+  if (p[0] === "skills" && p.length >= 2) return `skills/${p[1]}`;
+  if (p[0] === "dashboard" && p.length >= 2) {
+    if (p[1] === "public" && p.length >= 3) return "dashboard/public";
+    if (p[1] === "test") return "dashboard/test";
+    return `dashboard/${p[1]}`;
+  }
+  if (p[0] === ".spine") return ".spine";
+  if (p[0] === "docs") return "docs";
+  if (p[0] === ".claude-plugin") return ".claude-plugin";
+  if (p.length === 1) return path; // top-level file
+  return p[0];
+}
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Partition every commit into a group so nothing is loose (.spine/decisions/0004,
