@@ -2,26 +2,72 @@
 
 ## Current focus
 
-**Handoff:** spine is a v1.1.0 Claude Code plugin (9 lifecycle skills) plus a
-`spine-dashboard` that renders any repo's `.spine/`. The dashboard's graph is a
-**force-directed knowledge graph ("the brain")** in a Stripe-grade light theme:
-every commit is clustered by PR/segment, ADRs/focus overlay, and **module hubs +
-concept nodes** add non-sequential connections (`touches`/`references`/`mentions`);
-navigated by fit/zoom/search. All of it was produced by **dogfooding the spine
-lifecycle on this repo**, so `.spine/` here is both the memory and the worked
-example. Everything is merged to `main` (PRs #7, #8, #9). Nothing is in flight.
+**Iteration 5 — labels, timeline filtering, and a WIP anchor (woven through the
+Spine + skills, not just the dashboard).** Make the whole path queryable and
+filterable.
 
-No open focus.
+1. **Labels** — derived (conventional-commit `type`+`scope`) AND explicit Spine
+   labels (`labels:` on ADRs, `{labels}` on journal entries, written by the
+   skills). Every node carries labels.
+2. **Filter bar** over the brain — date-range slider + label chips; filtering
+   **hides** non-matching nodes (no relayout). Time AND label combine.
+3. **WIP anchor** — the "Current branch" cluster, accent-filled with a `WIP`
+   badge, always visible.
+4. **Spine + skills convention** — ADR template gains `labels:`; journal History
+   becomes `- <date> {labels} — …`; align/design/remember SKILL.md record them;
+   documented in `CLAUDE.md`; our own `.spine/` adopts it (dogfood).
 
 ## Next step
 
-None pending. Candidate follow-ups (not committed to):
-- Manual click-through of the live dashboard (collapse/expand, search, panels) —
-  the one path verified via the page's functions + screenshots, not a headless
-  canvas click.
-- Surface more `concept` nodes (only "Spine" crosses the ≥2-ADR bar today).
-- Harden `scripts/validate.mjs` against Claude Code's manifest schema (the gap
-  that let the `author: string` bug reach `/plugin install`).
+`build` slice 1: label derivation + attachment in `graph-builder`, test-first.
+
+## Build plan (iteration 5)
+
+Design in [[0010-labels-as-a-queryable-layer]], [[0011-filter-bar-and-wip-anchor]].
+
+1. **`graph-builder` labels** — RED: from injected commits/ADRs, assert commit
+   nodes carry `type/`·`scope/` labels, clusters union them, ADR nodes read
+   `labels:` frontmatter, every node has `labels` + `time`. GREEN + commit.
+2. **Filter bar + WIP** (`public/`) — time-range inputs + label chips that hide
+   non-matching nodes/edges (display:none, no relayout); "Current branch"
+   accent-filled with a `WIP` badge. Verify live.
+3. **Spine + skills convention** — `adr-format.md` `labels:`; journal template
+   `{labels}` format; align/design/remember SKILL.md; `CLAUDE.md`; backfill our
+   own `.spine/` ADRs + journal with labels. `validate.mjs` green.
+4. **verify + ship** — suite + validator green; screenshots; criteria; PR.
+
+## Acceptance criteria (iteration 5)
+
+Labels (data — `graph-builder`):
+- [ ] Every commit node carries derived labels: a `type/<t>` and (if present)
+      `scope/<s>` parsed from its conventional-commit subject.
+- [ ] Cluster (`pr`/`segment`) labels = the union of their commits' labels.
+- [ ] ADR nodes carry explicit `labels:` read from the ADR frontmatter; cluster
+      nodes also pick up labels from journal-entry `{labels}` tags.
+- [ ] `/api/graph` exposes each node's `labels[]` + `time`, plus the overall label
+      set and `[minTime,maxTime]`.
+
+Filter bar (dashboard):
+- [ ] A date-range control filters the brain to nodes within the window; nodes
+      outside are hidden (no relayout — positions unchanged).
+- [ ] Label chips (all labels in the graph) toggle a filter; a node shows iff
+      (no chips selected OR it carries a selected label) AND it's in the window.
+- [ ] Clearing filters restores every node to its place.
+
+WIP anchor:
+- [ ] The "Current branch" cluster is accent-filled with a `WIP` badge and stays
+      visible/identifiable as "now".
+
+Spine + skills convention:
+- [ ] `skills/design/adr-format.md` ADR template includes a `labels:` field.
+- [ ] `skills/init/templates/journal.md` History format is `- <date> {labels} — …`.
+- [ ] `align`, `design`, `remember` SKILL.md instruct recording labels + dates.
+- [ ] `CLAUDE.md` documents the labels convention.
+- [ ] Our own `.spine/` ADRs + journal carry labels (dashboard shows them).
+
+Cross-cutting:
+- [ ] `graph-builder` unit tests for derived + explicit labels and the time range.
+- [ ] `node --test` + `node scripts/validate.mjs` green; zero new deps.
 
 ## History
 
