@@ -28,9 +28,9 @@ exact schema rules confirmed against the authoritative spec in `design`.
 
 ## Next step
 
-**Await merge of PR #14** (manifest-schema hardening). Shipped; CI green
-(`validate` = validate.mjs + `npm test`, 8s); required check satisfied,
-mergeable. Leave the merge to the user.
+None pending. PR #14 merged (`c917e29`); `main` clean, validator runs with zero
+warnings (license added). The full align→ship lifecycle + CI + branch protection
+are now proven on a real feature.
 
 ## Verification (2026-06-13)
 
@@ -97,7 +97,7 @@ mergeable. Leave the merge to the user.
 
 ## History
 
-- 2026-06-13 {tooling, validate, manifest, ci, tests} — **PR #14 (open)**: harden
+- 2026-06-13 {tooling, validate, manifest, ci, tests} — **PR #14 (merged, `c917e29`)**: harden
   `validate.mjs` against the Claude Code **manifest schema**. Pure
   `manifest-schema.mjs` (`validateManifest`/`validateMarketplace`/`crossCheck` →
   `{errors,warnings}`); `validate.mjs` becomes a thin two-tier CLI wrapper (errors
