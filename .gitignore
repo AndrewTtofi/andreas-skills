@@ -1,5 +1,5 @@
 # gstack browse daemon scratch/cache
 .gstack/
 
-# Claude Code local state
-.claude/
+# Claude Code — share settings.json, ignore personal/local state
+.claude/settings.local.json
