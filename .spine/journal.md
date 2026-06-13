@@ -17,8 +17,9 @@ nearest-by-date; "dependencies" = `parent` (git) + `implements` (criterion→com
 
 ## Next step
 
-`verify`: full suite (`cd dashboard && node --test`) + `node scripts/validate.mjs`
-green; confirm each acceptance criterion against evidence. Then `ship`.
+**Shipped** → PR #7 (https://github.com/AndrewTtofi/spine/pull/7), `v1.1-skills`
+→ `main`. Awaiting review/merge. Suggested follow-up once merged: `remember` to
+compact this journal, and a manual click-through of the dashboard detail panel.
 
 ## Build plan (TDD vertical slices)
 
