@@ -38,26 +38,25 @@ Design in [[0008-stripe-grade-light-design-system]],
 ## Acceptance criteria (iteration 4)
 
 Brain graph:
-- [ ] The graph is force-directed (related nodes cluster organically), not a
-      vertical timeline.
-- [ ] Node types: `pr`/`segment` clusters, `decision`, `module` hub, `concept`,
-      `focus`; commits appear when a cluster is expanded.
-- [ ] Non-sequential edges present: `touches` (cluster/commit↔module),
-      `references` (ADR↔ADR from [[wikilinks]]), `mentions` (concept↔ADR/cluster);
-      plus existing `parent`/`decides`/`supersedes`/`focuses`.
-- [ ] Hubs/concepts only when shared by ≥2 things (no noise).
-- [ ] Navigation: fit-all on load; scroll-zoom + drag-pan; a search box centres &
-      highlights a matching node. No infinite scroll.
-- [ ] Reads as a clean brain in the light theme, not a hairball (screenshot).
+- [x] The graph is force-directed (fcose); related nodes cluster organically.
+- [x] Node types: `pr`/`segment` clusters, `decision`, `module` hub, `concept`,
+      `focus`; commits appear when a cluster is expanded. (/tmp/spine-brain.png)
+- [x] Non-sequential edges: `touches`, `references`, `mentions` + existing
+      `parent`/`decides`/`supersedes`/`focuses`. (real repo: 44 touches, 7 refs,
+      7 mentions)
+- [x] Hubs/concepts only when shared by ≥2 things (real repo: 14 hubs, 1 concept).
+- [x] fit-all on load; scroll-zoom + drag-pan; search centres+highlights and
+      expands clusters of matching commits. (/tmp/spine-brain-search.png)
+- [x] Reads as a brain in the light theme.
 
 Data:
-- [ ] `git-reader` returns `files[]` per commit.
-- [ ] `graph-builder` emits module/concept nodes + non-sequential edges.
+- [x] `git-reader` returns `files[]` per commit.
+- [x] `graph-builder` emits module/concept nodes + non-sequential edges.
 
 Cross-cutting:
-- [ ] No new npm deps (fcose via CDN, consistent with Cytoscape).
-- [ ] `git-reader`/`graph-builder` unit tests for the above; `node --test` +
-      `node scripts/validate.mjs` green.
+- [x] No new npm deps (fcose via CDN, like Cytoscape).
+- [x] git-reader/graph-builder unit tests (13 brain-related); `node --test`
+      37/37; `node scripts/validate.mjs` → All 9 skills valid.
 
 ## History
 

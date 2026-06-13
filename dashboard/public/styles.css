@@ -75,6 +75,27 @@ body {
 /* ---------- graph ---------- */
 #graph-view { background: var(--bg-subtle); }
 #cy { position: absolute; inset: 0; }
+.search {
+  position: absolute;
+  top: 18px; left: 50%; transform: translateX(-50%);
+  z-index: 9;
+  width: min(420px, 60vw);
+}
+.search input {
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 14px;
+  box-shadow: var(--shadow-sm);
+  outline: none;
+  transition: 0.15s;
+}
+.search input::placeholder { color: var(--faint); }
+.search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .legend {
   position: absolute;
   left: 22px;
