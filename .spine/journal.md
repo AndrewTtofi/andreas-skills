@@ -76,10 +76,28 @@ View (home, full redesign, zero new deps):
       layout needs only Cytoscape core).
 
 Tests:
-- [ ] `cd dashboard && node --test` covers: commit nodes + parent edges from a git
-      fixture, ADR/criterion attachment (SHA and date-fallback), and graceful
-      no-git degradation. All pass.
-- [ ] `node scripts/validate.mjs` stays green.
+- [x] `cd dashboard && node --test` covers: commit nodes + parent edges (injected
+      git history), ADR attachment (SHA and date-fallback), supersedes, focus,
+      milestone annotation, and no-git degradation. **26/26 pass.**
+- [x] `node scripts/validate.mjs` stays green — **All 9 skills valid.**
+
+## Verification (2026-06-13)
+
+All 16 acceptance criteria met with evidence.
+
+- Tests: `cd dashboard && node --test` → `# tests 26 # pass 26 # fail 0`.
+  (git-reader 5, graph-builder 9, server + markdown + spine-reader the rest.)
+- Validator: `node scripts/validate.mjs` → `All 9 skills valid.`
+- Live: dashboard at :4317 renders 46 commits as a vertical timeline, 3 ADR
+  cards on `decides` edges, focus star, amber milestone rings; no console errors.
+  Screenshot: /tmp/spine-timeline.png.
+- Diff: +504/−158 across 9 files; no dead code (fcose / old mention-model refs
+  gone); deep module boundaries (git-reader / graph-builder / server / view).
+
+Caveat: the panel open-on-click is verified by code + data (commit bodies and
+ADR html present in the payloads), not by a headless canvas click (Cytoscape
+renders to `<canvas>`, so DOM-level node clicks aren't addressable). Worth a
+manual click-through in the browser.
 
 ## History
 
