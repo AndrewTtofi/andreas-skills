@@ -79,6 +79,7 @@ const isGroup = (n) => n && (n.type === "pr" || n.type === "segment");
 
 // Commits hide inside collapsed clusters; every other node is always present.
 function isVisible(n) {
+  if (n.type === "focus") return false; // the current-focus star was removed
   return n.type !== "commit" || expanded.has(n.group);
 }
 function resolve(id) {
@@ -127,6 +128,16 @@ function computeElements() {
     seen.add(key);
     edges.push({ data: { id: `e${edges.length}`, source: s, target: t, rel: e.rel } });
   }
+  // Anchor an expanded cluster's commits to it so they sprout nearby, not adrift.
+  for (const n of visible) {
+    if (isGroup(n) && expanded.has(n.id)) {
+      for (const c of graph.nodes) {
+        if (c.type === "commit" && c.group === n.id) {
+          edges.push({ data: { id: `e${edges.length}`, source: n.id, target: c.id, rel: "contains" } });
+        }
+      }
+    }
+  }
   return [...visible.map((n) => ({ data: nodeData(n) })), ...edges];
 }
 
@@ -143,7 +154,10 @@ function renderGraph() {
   cy.on("tap", 'node[type="pr"], node[type="segment"]', (evt) => toggleGroup(evt.target.id()));
   cy.on("tap", 'node[type="commit"], node[type="decision"], node[type="focus"], node[type="module"], node[type="concept"]', (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
-    if (evt.target === cy) closePanel();
+    if (evt.target === cy) {
+      closePanel();
+      cy.elements().removeClass("faded");
+    }
   });
   cy.on("mouseover", "node", (evt) => highlight(evt.target));
   cy.on("mouseout", "node", clearHighlight);
@@ -172,11 +186,51 @@ function runLayout(randomize = true) {
   }
 }
 
+// Expand/collapse a cluster WITHOUT reshuffling the rest of the brain. Existing
+// nodes keep their exact positions; on expand the cluster's commits are placed in
+// a tidy ring around it, and the view focuses on the cluster + everything related
+// to it (its commits, the modules it touched, the ADRs) so nothing overlaps.
 function toggleGroup(id) {
-  expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+  const opening = !expanded.has(id);
+  const prev = {};
+  cy.nodes().forEach((n) => (prev[n.id()] = { ...n.position() }));
+  opening ? expanded.add(id) : expanded.delete(id);
+
   cy.elements().remove();
   cy.add(computeElements());
-  runLayout(false);
+  cy.nodes().forEach((n) => prev[n.id()] && n.position(prev[n.id()]));
+
+  if (opening) {
+    placeCommitsRing(id, prev[id] || { x: 0, y: 0 });
+    focusCluster(id);
+  } else {
+    cy.elements().removeClass("faded");
+  }
+}
+
+// Place a cluster's commits evenly on a ring around it (radius grows with count),
+// so they never overlap each other.
+function placeCommitsRing(id, anchor) {
+  const members = graph.nodes.filter((n) => n.type === "commit" && n.group === id);
+  const r = 70 + members.length * 13;
+  members.forEach((c, i) => {
+    const a = (i / Math.max(members.length, 1)) * 2 * Math.PI - Math.PI / 2;
+    const el = cy.getElementById(c.id);
+    if (el.length) el.position({ x: anchor.x + Math.cos(a) * r, y: anchor.y + Math.sin(a) * r });
+  });
+}
+
+// Fade everything unrelated and fit the view to the cluster + its neighbourhood.
+function focusCluster(id) {
+  let core = cy.getElementById(id);
+  for (const c of graph.nodes.filter((n) => n.type === "commit" && n.group === id)) {
+    const el = cy.getElementById(c.id);
+    if (el.length) core = core.union(el);
+  }
+  const related = core.closedNeighborhood();
+  cy.elements().removeClass("faded");
+  cy.elements().difference(related).addClass("faded");
+  cy.animate({ fit: { eles: related, padding: 70 } }, { duration: 420 });
 }
 
 function graphStyle() {
@@ -290,12 +344,14 @@ function graphStyle() {
     { selector: "edge", style: { "curve-style": "bezier", width: 1, opacity: 0.85, "line-color": LINE } },
     { selector: 'edge[rel="parent"]', style: { "line-color": "#c2cad6", width: 1.6 } },
     { selector: 'edge[rel="touches"]', style: { "line-color": "#dfe4ea", width: 1 } },
+    { selector: 'edge[rel="contains"]', style: { "line-color": "#e7ebf0", width: 1, opacity: 0.7 } },
     { selector: 'edge[rel="decides"]', style: { "line-color": LINE, "line-style": "dashed" } },
     { selector: 'edge[rel="references"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.5 } },
     { selector: 'edge[rel="supersedes"]', style: { "line-color": ACCENT, "line-style": "dotted", width: 1.6, opacity: 0.7 } },
     { selector: 'edge[rel="mentions"]', style: { "line-color": "#cdd0f5", "line-style": "dashed", opacity: 0.7 } },
     { selector: 'edge[rel="focuses"]', style: { "line-color": ACCENT, "line-style": "dashed", opacity: 0.6 } },
     { selector: ".dim", style: { opacity: 0.1, "text-opacity": 0.15 } },
+    { selector: ".faded", style: { opacity: 0.07, "text-opacity": 0 } },
     { selector: "node:selected", style: { "border-width": 2.5, "border-color": ACCENT } },
     { selector: "node.hot", style: { "text-opacity": 1, "z-index": 99 } },
     { selector: "edge.hot", style: { opacity: 1, width: 2.2, "line-color": ACCENT } },
@@ -326,7 +382,7 @@ function setupSearch() {
 }
 function runSearch(raw) {
   const q = raw.trim().toLowerCase();
-  cy.elements().removeClass("dim hot search-hit");
+  cy.elements().removeClass("dim hot search-hit faded");
   if (!q) {
     cy.fit(undefined, 60);
     return;
