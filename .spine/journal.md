@@ -19,7 +19,8 @@ filterable.
 
 ## Next step
 
-`build` slice 1: label derivation + attachment in `graph-builder`, test-first.
+`build` slice 2: filter bar (time range + label chips, hide non-matching) + WIP
+anchor on the Current-branch cluster.
 
 ## Build plan (iteration 5)
 
@@ -39,13 +40,13 @@ Design in [[0010-labels-as-a-queryable-layer]], [[0011-filter-bar-and-wip-anchor
 ## Acceptance criteria (iteration 5)
 
 Labels (data — `graph-builder`):
-- [ ] Every commit node carries derived labels: a `type/<t>` and (if present)
+- [x] Every commit node carries derived labels: a `type/<t>` and (if present)
       `scope/<s>` parsed from its conventional-commit subject.
-- [ ] Cluster (`pr`/`segment`) labels = the union of their commits' labels.
-- [ ] ADR nodes carry explicit `labels:` read from the ADR frontmatter; cluster
-      nodes also pick up labels from journal-entry `{labels}` tags.
-- [ ] `/api/graph` exposes each node's `labels[]` + `time`, plus the overall label
-      set and `[minTime,maxTime]`.
+- [x] Cluster (`pr`/`segment`) labels = the union of their commits' labels.
+- [x] ADR nodes carry explicit `labels:` read from the ADR frontmatter. (Module
+      hubs get a `scope/` label too; journal `{labels}` deferred — not needed yet.)
+- [x] Every node carries `labels[]` + `time`; the frontend derives the label set
+      and `[minTime,maxTime]` (slice 2). Real repo: 20 distinct labels.
 
 Filter bar (dashboard):
 - [ ] A date-range control filters the brain to nodes within the window; nodes

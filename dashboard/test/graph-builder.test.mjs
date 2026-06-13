@@ -214,6 +214,51 @@ test("a Language term named by ≥2 ADRs becomes a concept node with mentions", 
   assert.equal(g.edges.filter((e) => e.rel === "mentions" && e.source === concept.id).length, 2);
 });
 
+// --- labels (ADR-0010) ---
+const F1 = sha("f1"), X1 = sha("x1");
+const LABELS_GIT = {
+  available: true,
+  commits: [
+    { sha: F1, shortSha: "f100000", parents: [X1], subject: "feat(dashboard): add the brain", body: "", author: "A", date: "2026-06-13T10:00:00+00:00", files: [] },
+    { sha: X1, shortSha: "x100000", parents: [], subject: "fix(plugin): author object", body: "", author: "A", date: "2026-06-12T10:00:00+00:00", files: [] },
+  ],
+};
+const LABELS_SPINE = {
+  exists: true,
+  context: "",
+  conventions: "",
+  journal: "# J\n## Current focus\nx\n",
+  decisions: [
+    { id: "0001-x", title: "0001. X", markdown: "# 0001. X\n- **Date:** 2026-06-10\n- **Labels:** graph, ux\n## Decision\nfoo\n" },
+  ],
+};
+
+test("commit nodes carry derived type/scope labels", () => {
+  const g = buildGraph(LABELS_SPINE, "/repo", { git: LABELS_GIT });
+  const c = g.nodes.find((n) => n.id === `commit:${F1}`);
+  assert.ok(c.labels.includes("type/feat"));
+  assert.ok(c.labels.includes("scope/dashboard"));
+});
+
+test("cluster labels are the union of member commit labels", () => {
+  const g = buildGraph(LABELS_SPINE, "/repo", { git: LABELS_GIT });
+  const seg = g.nodes.find((n) => n.type === "segment" && n.label === "Current branch");
+  for (const l of ["type/feat", "scope/dashboard", "type/fix", "scope/plugin"]) {
+    assert.ok(seg.labels.includes(l), `missing ${l}`);
+  }
+});
+
+test("decision nodes read explicit labels: from frontmatter", () => {
+  const g = buildGraph(LABELS_SPINE, "/repo", { git: LABELS_GIT });
+  const d = g.nodes.find((n) => n.id === "adr:0001-x");
+  assert.deepEqual(d.labels.slice().sort(), ["graph", "ux"]);
+});
+
+test("every node has a labels array", () => {
+  const g = buildGraph(LABELS_SPINE, "/repo", { git: LABELS_GIT });
+  assert.ok(g.nodes.every((n) => Array.isArray(n.labels)));
+});
+
 test("history with no PR merges produces no pr nodes (backstop)", () => {
   const g = buildGraph(MINI_SPINE, "/repo", { git: GIT }); // GIT has no merge-PR subjects
   assert.ok(!g.nodes.some((n) => n.type === "pr"));
