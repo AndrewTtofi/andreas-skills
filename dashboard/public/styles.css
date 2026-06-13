@@ -222,6 +222,9 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 .md th, .md td { border: 1px solid var(--line); padding: 9px 13px; text-align: left; }
 .md th { background: rgba(159, 180, 221, 0.05); font-family: var(--font-mono); font-weight: 500; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.02em; }
+.milestone { color: var(--amber); font-size: 13px; margin: 0.2em 0 1em; }
+.commit-body { white-space: pre-wrap; font-size: 12.5px; }
 
 @media (prefers-reduced-motion: reduce) { *, .star-dots { animation: none !important; } }
 

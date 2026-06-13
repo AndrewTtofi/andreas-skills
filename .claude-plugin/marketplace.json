@@ -6,8 +6,8 @@
     {
       "name": "spine",
       "source": "./",
-      "description": "init · align · design · build · verify · remember — six lifecycle skills unified by the .spine/ memory store, so your agent works like a senior engineer from idea to production.",
-      "version": "1.0.0",
+      "description": "init · align · design · build · verify · ship · troubleshoot · remember — eight lifecycle skills (plus new-skill) unified by the .spine/ memory store, so your agent works like a senior engineer from idea to production.",
+      "version": "1.1.0",
       "author": { "name": "Andreas Ttofi" },
       "license": "MIT",
       "keywords": ["lifecycle", "memory", "tdd", "architecture", "spine"]

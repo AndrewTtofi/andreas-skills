@@ -1,17 +1,22 @@
 const $ = (s) => document.querySelector(s);
 
 const TYPE = {
-  module: { color: "#7fd4ff", shape: "ellipse", label: "modules" },
-  decision: { color: "#ffce6a", shape: "round-diamond", label: "decisions" },
-  conventions: { color: "#c8a8ff", shape: "round-rectangle", label: "conventions" },
-  focus: { color: "#9af5c4", shape: "star", label: "current focus" },
+  commit: { color: "#7fd4ff", label: "commits" },
+  decision: { color: "#ffce6a", label: "decisions" },
+  focus: { color: "#9af5c4", label: "current focus" },
 };
+const REL = { parent: "sequence", decides: "decides", supersedes: "supersedes", focuses: "focus" };
 const DOCS = [
   ["architecture", "Architecture"],
   ["conventions", "Conventions"],
   ["journal", "Journal"],
   ["decisions", "Decisions"],
 ];
+
+// Timeline geometry (model coordinates). Commits run down a central spine,
+// newest at top; decisions sit in a lane to the right; focus floats up-left.
+const ROW = 92;
+const LANE = 300;
 
 let spine = null;
 let graph = null;
@@ -52,85 +57,160 @@ function switchMode(m) {
   $("#docs-view").hidden = m !== "docs";
   if (m === "graph" && cy) {
     cy.resize();
-    cy.fit(undefined, 64);
+    focusTop();
   }
   if (m === "docs") renderDoc(docActive);
 }
 
-function renderGraph() {
-  // Obsidian-style: node size scales with how connected a node is (its degree).
-  const deg = {};
-  graph.nodes.forEach((n) => (deg[n.id] = 0));
-  graph.edges.forEach((e) => {
-    deg[e.source] = (deg[e.source] ?? 0) + 1;
-    deg[e.target] = (deg[e.target] ?? 0) + 1;
-  });
-  const nodeSize = (e) => 18 + Math.sqrt(e.data("deg")) * 11;
+// Compute a deterministic vertical-timeline position for every node.
+function layoutPositions() {
+  const commits = graph.nodes
+    .filter((n) => n.type === "commit")
+    .sort((a, b) => (a.time < b.time ? 1 : a.time > b.time ? -1 : 0)); // newest first
+  const yOf = {};
+  commits.forEach((n, i) => (yOf[n.id] = i * ROW));
 
+  const decideTarget = {};
+  graph.edges.filter((e) => e.rel === "decides").forEach((e) => (decideTarget[e.source] = e.target));
+
+  const pos = {};
+  for (const n of commits) pos[n.id] = { x: 0, y: yOf[n.id] };
+
+  const stack = {}; // stack multiple ADRs sharing a commit row
+  for (const n of graph.nodes.filter((n) => n.type === "decision")) {
+    const tgt = decideTarget[n.id];
+    const baseY = tgt != null && yOf[tgt] != null ? yOf[tgt] : 0;
+    const k = stack[baseY] || 0;
+    pos[n.id] = { x: LANE, y: baseY + k * (ROW * 0.62) };
+    stack[baseY] = k + 1;
+  }
+
+  const focus = graph.nodes.find((n) => n.type === "focus");
+  if (focus) pos[focus.id] = { x: -LANE * 0.7, y: -ROW * 1.1 };
+
+  return pos;
+}
+
+function renderGraph() {
+  const pos = layoutPositions();
   const elements = [
-    ...graph.nodes.map((n) => ({ data: { id: n.id, label: n.label, type: n.type, deg: deg[n.id] || 0 } })),
+    ...graph.nodes.map((n) => ({
+      data: { id: n.id, label: n.label, type: n.type, milestone: n.milestone ? 1 : 0, sha: n.shortSha || "" },
+      position: pos[n.id] || { x: 0, y: 0 },
+    })),
     ...graph.edges.map((e, i) => ({ data: { id: "e" + i, source: e.source, target: e.target, rel: e.rel } })),
   ];
+
   cy = cytoscape({
     container: $("#cy"),
     elements,
-    minZoom: 0.2,
-    maxZoom: 3,
-    wheelSensitivity: 0.25,
+    layout: { name: "preset" },
+    minZoom: 0.25,
+    maxZoom: 2.5,
+    wheelSensitivity: 0.3,
     style: [
       {
         selector: "node",
         style: {
-          "background-color": (e) => TYPE[e.data("type")].color,
-          "background-opacity": 0.95,
-          shape: "ellipse",
-          width: nodeSize,
-          height: nodeSize,
           label: "data(label)",
           color: "#c9d4ec",
           "font-family": "IBM Plex Sans, system-ui, sans-serif",
           "font-size": 12,
-          "font-weight": 500,
-          "text-valign": "bottom",
-          "text-halign": "center",
-          "text-margin-y": 7,
           "text-outline-color": "#05060a",
           "text-outline-width": 2,
-          "min-zoomed-font-size": 9,
-          "border-width": 8,
-          "border-color": (e) => TYPE[e.data("type")].color,
-          "border-opacity": 0.14,
-          "transition-property": "border-opacity, background-opacity",
-          "transition-duration": "160ms",
+          "min-zoomed-font-size": 8,
+        },
+      },
+      // commits: dots on the spine, label to the left
+      {
+        selector: 'node[type="commit"]',
+        style: {
+          width: 13,
+          height: 13,
+          shape: "ellipse",
+          "background-color": TYPE.commit.color,
+          "text-valign": "center",
+          "text-halign": "left",
+          "text-margin-x": -12,
+          "text-max-width": 230,
+          "text-wrap": "ellipsis",
+        },
+      },
+      // milestones: brighter, amber ring
+      {
+        selector: 'node[type="commit"][milestone = 1]',
+        style: {
+          width: 19,
+          height: 19,
+          "border-width": 4,
+          "border-color": TYPE.decision.color,
+          "border-opacity": 0.7,
+          "font-weight": 600,
+        },
+      },
+      // decisions: amber cards in the right lane
+      {
+        selector: 'node[type="decision"]',
+        style: {
+          shape: "round-rectangle",
+          "background-color": "rgba(255,206,106,0.14)",
+          "border-width": 1.5,
+          "border-color": TYPE.decision.color,
+          color: TYPE.decision.color,
+          width: "label",
+          height: "label",
+          padding: 10,
+          "text-valign": "center",
+          "text-halign": "center",
+          "text-max-width": 190,
+          "text-wrap": "wrap",
+          "font-size": 11,
+        },
+      },
+      // focus: mint star, up-left
+      {
+        selector: 'node[type="focus"]',
+        style: {
+          shape: "star",
+          width: 30,
+          height: 30,
+          "background-color": TYPE.focus.color,
+          "text-valign": "center",
+          "text-halign": "left",
+          "text-margin-x": -12,
+          color: TYPE.focus.color,
+          "font-weight": 600,
         },
       },
       {
         selector: "edge",
-        style: {
-          width: 1.1,
-          "line-color": "#4a5878",
-          opacity: 0.4,
-          "curve-style": "bezier",
-          label: "data(rel)",
-          "font-family": "IBM Plex Mono, monospace",
-          "font-size": 9,
-          color: "#9fb0d4",
-          "text-opacity": 0,
-          "text-rotation": "autorotate",
-          "text-background-color": "#05060a",
-          "text-background-opacity": 0.75,
-          "text-background-padding": 3,
-        },
+        style: { "curve-style": "straight", width: 1.4, opacity: 0.55, "line-color": "#4a5878" },
       },
-      { selector: "node:selected", style: { "border-opacity": 0.6, "background-opacity": 1 } },
-      { selector: ".dim", style: { opacity: 0.08, "text-opacity": 0 } },
-      { selector: "node.hot", style: { "border-opacity": 0.5 } },
-      { selector: "edge.hot", style: { opacity: 0.95, "text-opacity": 0.95, "line-color": "#aebfe4", width: 1.8 } },
+      // the commit spine
+      {
+        selector: 'edge[rel="parent"]',
+        style: { "line-color": "rgba(127,212,255,0.55)", width: 2.4, opacity: 0.8, "curve-style": "bezier" },
+      },
+      {
+        selector: 'edge[rel="decides"]',
+        style: { "line-color": TYPE.decision.color, "line-style": "dashed", opacity: 0.6, "curve-style": "bezier" },
+      },
+      {
+        selector: 'edge[rel="supersedes"]',
+        style: { "line-color": "#c8a8ff", "line-style": "dotted", width: 1.8, opacity: 0.8 },
+      },
+      {
+        selector: 'edge[rel="focuses"]',
+        style: { "line-color": TYPE.focus.color, "line-style": "dashed", opacity: 0.6, "curve-style": "bezier" },
+      },
+      { selector: ".dim", style: { opacity: 0.07, "text-opacity": 0 } },
+      { selector: "node:selected", style: { "border-width": 4, "border-color": "#e7ecf7", "border-opacity": 0.5 } },
+      { selector: "node.hot", style: { "text-opacity": 1 } },
+      { selector: "edge.hot", style: { opacity: 1, width: 2.6, "line-color": "#aebfe4" } },
     ],
   });
 
-  runForceLayout();
-
+  focusTop();
   cy.on("tap", "node", (evt) => openPanel(evt.target));
   cy.on("tap", (evt) => {
     if (evt.target === cy) closePanel();
@@ -139,41 +219,11 @@ function renderGraph() {
   cy.on("mouseout", "node", clearHighlight);
 }
 
-// Obsidian-like organic spread. Prefer fcose (high-quality force layout);
-// fall back to the built-in cose if the fcose CDN script didn't load.
-function runForceLayout() {
-  const fcose = {
-    name: "fcose",
-    quality: "proof",
-    animate: true,
-    animationDuration: 900,
-    randomize: true,
-    fit: true,
-    padding: 90,
-    nodeSeparation: 150,
-    idealEdgeLength: 130,
-    nodeRepulsion: 9000,
-    gravity: 0.18,
-    gravityRange: 3.6,
-    numIter: 2500,
-  };
-  const cose = {
-    name: "cose",
-    animate: true,
-    animationDuration: 900,
-    fit: true,
-    padding: 90,
-    idealEdgeLength: 130,
-    nodeRepulsion: 14000,
-    gravity: 0.2,
-    componentSpacing: 180,
-    nodeOverlap: 28,
-  };
-  try {
-    cy.layout(fcose).run();
-  } catch {
-    cy.layout(cose).run();
-  }
+// Park the viewport at the top of the timeline (newest commits + focus),
+// readable at 1:1, so history scrolls downward from there.
+function focusTop() {
+  cy.zoom(1);
+  cy.pan({ x: cy.width() / 2, y: ROW * 1.6 });
 }
 
 function highlight(node) {
@@ -188,16 +238,26 @@ function clearHighlight() {
 function openPanel(node) {
   const type = node.data("type");
   const id = node.id();
+  let kicker = type;
   let html = "";
-  if (type === "decision") {
+
+  if (type === "commit") {
+    const n = graph.nodes.find((x) => x.id === id) || {};
+    kicker = "commit";
+    const meta = [n.shortSha, n.author, fmtDate(n.time)].filter(Boolean).join(" · ");
+    const body = n.body ? `<pre class="commit-body">${esc(n.body)}</pre>` : "";
+    const mile = n.milestone ? `<p class="milestone">★ ${esc(n.milestone)}</p>` : "";
+    html = `<h1>${esc(n.label)}</h1><p class="muted mono">${esc(meta)}</p>${mile}${body}`;
+  } else if (type === "decision") {
     const adrId = id.replace(/^adr:/, "");
     const d = spine.decisions.find((x) => x.id === adrId);
+    kicker = "decision";
     html = d ? d.html : "";
-  } else if (type === "conventions") html = spine.conventions ?? "";
-  else if (type === "focus") html = spine.journal ?? "";
-  else if (type === "module") html = spine.context ?? "";
+  } else if (type === "focus") {
+    kicker = "current focus";
+    html = spine.journal ?? "";
+  }
 
-  const kicker = { module: "module", decision: "decision", conventions: "conventions", focus: "current focus" }[type];
   const panel = $("#panel");
   panel.innerHTML = `
     <button class="panel-close" aria-label="Close">×</button>
@@ -216,10 +276,20 @@ function closePanel() {
   if (cy) cy.$(":selected").unselect();
 }
 
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(+d) ? iso : d.toISOString().slice(0, 10);
+}
+function esc(s) {
+  return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
 function renderLegend() {
-  $("#legend").innerHTML = Object.entries(TYPE)
-    .map(([t, v]) => `<span class="leg"><i style="background:${v.color}"></i>${v.label}</span>`)
+  const types = Object.entries(TYPE)
+    .map(([, v]) => `<span class="leg"><i style="background:${v.color}"></i>${v.label}</span>`)
     .join("");
+  $("#legend").innerHTML = types;
 }
 
 /* ---------- docs mode ---------- */
